@@ -53,6 +53,7 @@
   <a href="#config">5 · Config keys</a>
   <a href="#errors">6 · Errors &amp; limits</a>
   <a href="#examples">7 · Examples (curl · JS · Python)</a>
+  <a href="#agents">8 · For AI agents (MCP)</a>
 </nav>
 
 <section id="playground">
@@ -202,6 +203,28 @@ r = requests.post(
 verdicts = r.json()[<span class="s">"verdicts"</span>]  <span class="c"># verdicts[i] belongs to claims[i]</span>
 <span class="c"># verdicts[1] -> {'corroboration': 2, 'corroboratingSources': ['reuters'], 'signal': 'breaking', ...}</span></code></pre>
   </div>
+</section>
+
+<section id="agents">
+  <h2><span class="no">8</span>For AI agents (MCP)</h2>
+  <p>
+    Sourced ships as an <strong>MCP server</strong> — agents get the primitive
+    as native tools: <code>assess</code> (with session memory: corroboration
+    and first-seen accumulate across calls), <code>verify_chain</code> and
+    <code>run_conformance</code>. The server identifies itself as
+    <code>sourced</code>.
+  </p>
+<pre><code><span class="c"># Claude Code</span>
+claude mcp add sourced -- npx -y @sourcedhq/mcp
+
+<span class="c"># any MCP client (config JSON)</span>
+{ <span class="s">"mcpServers"</span>: { <span class="s">"sourced"</span>: { <span class="s">"command"</span>: <span class="s">"npx"</span>, <span class="s">"args"</span>: [<span class="s">"-y"</span>, <span class="s">"@sourcedhq/mcp"</span>] } } }</code></pre>
+  <p class="muted small">
+    Machine-readable summaries of all three surfaces live at
+    <a href="/llms.txt">/llms.txt</a> on each domain. This endpoint itself is
+    agent-friendly by design: no auth, CORS open, JSON in/out,
+    <code>GET</code> returns usage.
+  </p>
 </section>
 
 <footer>
