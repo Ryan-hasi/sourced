@@ -16,6 +16,7 @@
     "dev:network": "node scripts/dev-server.mjs network 4182"
   },
   "devDependencies": {
+    "@types/node": "^24.13.3",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"
   }
