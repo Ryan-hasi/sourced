@@ -390,7 +390,11 @@
     <tr><td>@sourcedhq/core</td><td>The primitive: <code>assess()</code>, types, <code>createMemoryStore()</code>.</td><td>none</td></tr>
     <tr><td>@sourcedhq/conformance</td><td>G1–G7 as adversarial executable cases + runner for any implementation.</td><td>core</td></tr>
     <tr><td>@sourcedhq/log</td><td>Hash-chained transparency log: append, verify, inclusion proofs, JSONL storage, anchor CLI.</td><td>none (node:crypto)</td></tr>
+    <tr><td>@sourcedhq/mcp</td><td>MCP server for AI agents — <code>assess</code> (session memory), <code>verify_chain</code>, <code>run_conformance</code>. Server name: <code>sourced</code>.</td><td>core, log, conformance</td></tr>
   </table></div>
+  <p class="muted small">
+    Agent-readable summaries: <a href="/llms.txt">/llms.txt</a> on every Sourced domain.
+  </p>
   <p>
     <strong>Status:</strong> v0.1.0. The specification on this page is stable —
     the guarantees are the contract; API names may still sharpen before 1.0.

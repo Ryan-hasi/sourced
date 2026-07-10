@@ -10,6 +10,7 @@ export default defineConfig({
       "@sourcedhq/core": p("./packages/core/src/index.ts"),
       "@sourcedhq/log": p("./packages/log/src/index.ts"),
       "@sourcedhq/conformance": p("./packages/conformance/src/index.ts"),
+      "@sourcedhq/mcp": p("./packages/mcp/src/index.ts"),
     },
   },
   test: {
