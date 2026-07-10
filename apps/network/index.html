@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sourced NETWORK — the proof surface</title>
+<meta name="description" content="Watch the honesty guarantees pass live, verify transparency chains, follow the anchored verdict history.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23e5484d'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brand"><a href="https://sourced.ink"><span class="dot">●</span> SOURCED</a></div>
+  <nav class="nav">
+    <a href="https://sourced.ink">SPEC</a>
+    <a href="https://sourced.run">RUN</a>
+    <a class="here" href="https://sourced.network">PROOF</a>
+  </nav>
+</header>
+
+<div class="hero" style="padding-bottom:32px">
+  <div class="kicker">sourced.network — the proof surface</div>
+  <h1>Don’t trust it.<br><em>Check it.</em></h1>
+  <p class="sub">
+    Sourced’s honesty is not a promise — it is an adversarial test suite you can
+    run right now, and a hash-chained verdict history you can verify yourself.
+    This page is where both live.
+  </p>
+</div>
+
+<section style="border-top:0;padding-top:0">
+  <h2>The yardstick — run live</h2>
+  <p class="muted small" style="margin-bottom:14px">
+    Every case below ATTACKS the engine: coincidental merges, syndication
+    flooding, event hijacking, fake urgency, dead storage, garbage input.
+    Rerun it as often as you like — this executes against the live engine,
+    not a cached result.
+  </p>
+  <div class="row">
+    <button class="btn" id="runsuite">RUN THE SUITE</button>
+    <span class="muted small" id="suitestat"></span>
+  </div>
+  <div id="suite" style="margin-top:18px"></div>
+</section>
+
+<section>
+  <h2>Verify a transparency chain</h2>
+  <p class="muted small" style="margin-bottom:14px">
+    Sourced deployments chain every verdict batch (each record commits to the
+    previous one’s hash) and publish the head. Paste a chain — as JSONL, one
+    record per line — and this verifies every link. Rewriting ANY past verdict
+    breaks everything after it.
+  </p>
+  <textarea id="chain" rows="7" spellcheck="false" placeholder='{"seq":0,"ts":1767225600000,"payloadHash":"…","prevHash":"","hash":"…"}&#10;{"seq":1,"ts":1767225601000,"payloadHash":"…","prevHash":"…","hash":"…"}'></textarea>
+  <div class="row" style="margin-top:14px">
+    <button class="btn" id="verify">VERIFY CHAIN</button>
+    <span class="muted small" id="vstat"></span>
+  </div>
+  <div id="vout" style="margin-top:16px"></div>
+</section>
+
+<section>
+  <h2>Anchor registry</h2>
+  <div class="card">
+    <p class="small"><span class="badge">GENESIS</span></p>
+    <p class="small" style="margin-top:10px">
+      The production chain starts with the first Sourced deployment inside
+      <a href="https://tickwire.news">Tickwire</a>. From that moment, every
+      verdict batch is chained and the head is anchored publicly — and this
+      registry lists every anchor: <code>timestamp · seq · head</code>.
+      A history that cannot be rewritten, only extended.
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div><span style="color:var(--signal)">●</span> SOURCED — corroborated, never “true”</div>
+  <div><a href="https://sourced.ink">SPEC</a> · <a href="https://sourced.run">RUN</a></div>
+</footer>
+
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
+
+$("runsuite").onclick = async () => {
+  const stat = $("suitestat"), box = $("suite");
+  stat.textContent = "attacking the engine…"; box.innerHTML = "";
+  try {
+    const t0 = performance.now();
+    const r = await fetch("/api/conformance");
+    const data = await r.json();
+    stat.textContent = Math.round(performance.now() - t0) + " ms · " + data.passed + "/" + (data.passed + data.failed) + " passed";
+    const card = document.createElement("div");
+    card.className = "card";
+    data.results.forEach((c) => {
+      const el = document.createElement("div");
+      el.className = "v";
+      el.innerHTML =
+        '<div class="t"><span class="badge ' + (c.pass ? "ok" : "fail") + '">' + (c.pass ? "PASS" : "FAIL") + "</span> " +
+        '<span class="badge">' + esc(c.guarantee) + "</span> " + esc(c.title) + "</div>" +
+        '<div class="m">' + esc(c.detail) + "</div>";
+      card.appendChild(el);
+    });
+    box.appendChild(card);
+  } catch (e) { stat.textContent = "failed: " + e; }
+};
+
+$("verify").onclick = async () => {
+  const stat = $("vstat"), box = $("vout");
+  stat.textContent = "verifying…"; box.innerHTML = "";
+  try {
+    const r = await fetch("/api/verify", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonl: $("chain").value }),
+    });
+    const data = await r.json();
+    if (data.error) { stat.textContent = data.error; return; }
+    stat.textContent = "";
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = data.ok
+      ? '<span class="badge ok">CHAIN VALID</span><div class="m" style="margin-top:10px">' +
+        data.length + " records · head <code>" + esc(data.head) + "</code><br>Publish or compare this head — it commits to the entire history above it.</div>"
+      : '<span class="badge fail">CHAIN BROKEN</span><div class="m" style="margin-top:10px">record ' +
+        data.badIndex + ": " + esc(data.reason) + " — everything from here on is untrustworthy.</div>";
+    box.appendChild(card);
+  } catch (e) { stat.textContent = "failed: " + e; }
+};
+</script>
+</body>
+</html>

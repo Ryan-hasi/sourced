@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sourced RUN — try the corroboration primitive</title>
+<meta name="description" content="Paste claims, get verdicts. The Sourced primitive, live: independent-source counts with receipts. Never 'true'.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23e5484d'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brand"><a href="https://sourced.ink"><span class="dot">●</span> SOURCED</a></div>
+  <nav class="nav">
+    <a href="https://sourced.ink">SPEC</a>
+    <a class="here" href="https://sourced.run">RUN</a>
+    <a href="https://sourced.network">PROOF</a>
+  </nav>
+</header>
+
+<div class="hero" style="padding-bottom:32px">
+  <div class="kicker">sourced.run — the playground</div>
+  <h1>Paste claims.<br>Get <em>verdicts.</em></h1>
+  <p class="sub">
+    The live primitive. Each claim is <code>{ id, title, origin, publishedAt }</code> —
+    same titles from different origins corroborate each other; copies from the
+    same origin collapse to one (G3). Single sources stay bare (G5).
+  </p>
+</div>
+
+<section style="border-top:0;padding-top:0">
+  <textarea id="in" rows="14" spellcheck="false"></textarea>
+  <div class="row" style="margin-top:14px">
+    <button class="btn" id="go">RUN ASSESS</button>
+    <button class="btn ghost" id="reset">RESET EXAMPLE</button>
+    <span class="muted small" id="stat"></span>
+  </div>
+  <div id="out" style="margin-top:22px"></div>
+</section>
+
+<section>
+  <h2>Use it as an API</h2>
+<pre>curl -s https://sourced.run/api/assess \
+  -H "content-type: application/json" \
+  -d '{"claims":[
+    {"id":"a","title":"Major dam breach reported upstream","origin":"reuters","publishedAt":"2026-07-10T21:00:00Z"},
+    {"id":"b","title":"Major dam breach reported upstream","origin":"bbc","publishedAt":"2026-07-10T21:04:00Z"}
+  ]}'</pre>
+  <p class="muted small">
+    Stateless: corroboration is computed within the batch you send.
+    200 claims / 200 kB per call. Optional <code>config</code> can TIGHTEN or relax
+    thresholds — the defaults are the honest contract.
+    Spec &amp; guarantees: <a href="https://sourced.ink">sourced.ink</a>.
+  </p>
+</section>
+
+<footer>
+  <div><span style="color:var(--signal)">●</span> SOURCED — corroborated, never “true”</div>
+  <div><a href="https://sourced.ink">SPEC</a> · <a href="https://sourced.network">PROOF</a></div>
+</footer>
+
+</div>
+<script>
+const EXAMPLE = {
+  claims: [
+    { id: "a", title: "Major dam breach reported upstream of city", origin: "reuters",   publishedAt: new Date(Date.now() - 4 * 60000).toISOString() },
+    { id: "b", title: "Major dam breach reported upstream of city", origin: "bbc",       publishedAt: new Date(Date.now() - 3 * 60000).toISOString() },
+    { id: "c", title: "Major dam breach reported upstream of city", origin: "ap",        publishedAt: new Date(Date.now() - 2 * 60000).toISOString() },
+    { id: "d", title: "Major dam breach reported upstream of city", origin: "aljazeera", publishedAt: new Date(Date.now() - 1 * 60000).toISOString() },
+    { id: "e", title: "Major dam breach reported upstream of city", origin: "reuters",   publishedAt: new Date().toISOString() },
+    { id: "f", title: "Celebrity spotted at downtown restaurant opening", origin: "gossip-daily", publishedAt: new Date().toISOString() }
+  ]
+};
+const $ = (id) => document.getElementById(id);
+const input = $("in"), out = $("out"), stat = $("stat");
+const setExample = () => { input.value = JSON.stringify(EXAMPLE, null, 2); };
+setExample();
+$("reset").onclick = () => { setExample(); out.innerHTML = ""; stat.textContent = ""; };
+
+$("go").onclick = async () => {
+  out.innerHTML = ""; stat.textContent = "running…";
+  let body;
+  try { body = JSON.parse(input.value); } catch { stat.textContent = "invalid JSON"; return; }
+  try {
+    const t0 = performance.now();
+    const r = await fetch("/api/assess", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) { stat.textContent = data.error || ("error " + r.status); return; }
+    stat.textContent = Math.round(performance.now() - t0) + " ms · " + data.verdicts.length + " verdicts";
+    const claims = body.claims || [];
+    const box = document.createElement("div");
+    box.className = "card";
+    data.verdicts.forEach((v, i) => {
+      const c = claims[i] || {};
+      const el = document.createElement("div");
+      el.className = "v";
+      const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
+      if (v === null) {
+        el.innerHTML = '<div class="t">' + esc(c.title) + ' <span class="badge">UNASSESSABLE</span></div>' +
+          '<div class="m">' + esc(c.origin) + ' — passes through unlabeled (G7)</div>';
+      } else {
+        const badge = v.signal ? '<span class="badge ' + v.signal + '">' + v.signal.toUpperCase() + "</span>" : "";
+        const rec = v.corroboratingSources.length ? " · receipts: " + v.corroboratingSources.map(esc).join(", ") : "";
+        el.innerHTML =
+          '<div class="t">' + esc(c.title) + " " + badge + "</div>" +
+          '<div class="m">' + esc(c.origin) + " → <strong>" + v.corroboration + " source" + (v.corroboration === 1 ? "" : "s") + "</strong>" + rec +
+          " · first seen " + esc(v.firstSeenAt.replace("T", " ").slice(0, 16)) + "</div>";
+      }
+      box.appendChild(el);
+    });
+    out.appendChild(box);
+    const note = document.createElement("p");
+    note.className = "muted small";
+    note.style.marginTop = "12px";
+    note.textContent = "Note the honesty: reuters appearing twice adds nothing (G3), the single-origin story got no badge (G5), and nothing here says “true” (G2).";
+    out.appendChild(note);
+  } catch (e) { stat.textContent = "request failed: " + e; }
+};
+</script>
+</body>
+</html>
