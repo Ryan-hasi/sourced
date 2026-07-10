@@ -33,7 +33,7 @@ write("apps/network/api/_core.mjs", core);
 const log = banner + read("packages/log/dist/index.js").replace(/^export \{[^}]*\} from "\.\/file\.js";\r?\n/m, "");
 write("apps/network/api/_log.mjs", log);
 
-const conformance = banner + read("packages/conformance/dist/index.js").replaceAll('"@sourced/core"', '"./_core.mjs"');
+const conformance = banner + read("packages/conformance/dist/index.js").replaceAll('"@sourcedhq/core"', '"./_core.mjs"');
 write("apps/network/api/_conformance.mjs", conformance);
 
 for (const app of ["ink", "run", "network"]) {
