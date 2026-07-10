@@ -15,6 +15,8 @@
  */
 import { createHash } from "node:crypto";
 
+export { loadChain, appendToFile } from "./file.js";
+
 export type LogRecord = {
   /** 0-based position in the chain. */
   seq: number;
