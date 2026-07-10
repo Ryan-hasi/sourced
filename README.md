@@ -79,6 +79,28 @@ npm install        # workspace setup
 npm test           # 20 adversarial + unit tests
 ```
 
+## Beyond news
+
+The unit is `(claim, origin, timestamp)` — not "a news article". Swap the
+clustering and the storage, keep the counting and the guarantees:
+
+```bash
+npm run build && node examples/outage/run.mjs
+# one flaky probe stays bare · repeat reports collapse ·
+# 4 independent monitors → CONFIRMED, with receipts
+```
+
+News, outage detection, OSINT, sensor fusion, moderation queues — anywhere
+independent reports describe discrete events.
+
+## The Sourced surfaces
+
+| Domain | Function |
+|---|---|
+| **sourced.ink** | The spec, in ink — guarantees, docs, the pitch. The public face. |
+| **sourced.run** | Run it — hosted `assess` playground & API. |
+| **sourced.network** | The network — live transparency-log head, anchor history, verdict stats. |
+
 ## Who runs on it
 
 **[Tickwire](https://tickwire.news)** — the live news channel for the screen
