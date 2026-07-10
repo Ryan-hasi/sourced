@@ -1,0 +1,18 @@
+# Sourced NETWORK — the proof surface
+
+> Sourced's honesty is checkable, not claimed: an adversarial test suite (G1–G7) that runs live against the engine, and a hash-chained transparency log whose integrity anyone can verify.
+
+## Endpoints
+
+- GET https://sourced.network/api/conformance — runs the full adversarial suite server-side, fresh on every call. Response: { ranAt, engine, passed, failed, results: [{ id, guarantee, title, pass, detail }] }. The suite attacks: coincidental merges, event hijacking (keyword stuffing), syndication flooding, fake urgency, dead storage, garbage input, memory honesty.
+- POST https://sourced.network/api/verify — verify a transparency chain. Body: { chain: LogRecord[] } or { jsonl: string }, optional { payload, seq } for an inclusion proof. Response: { ok: true, length, head } or { ok: false, badIndex, reason }.
+
+## Transparency log format
+
+LogRecord = { seq (0-based, contiguous), ts (epoch ms), payloadHash (SHA-256 hex of canonicalized JSON — keys sorted recursively), prevHash (previous record's hash, "" at genesis), hash = SHA-256(seq + "|" + ts + "|" + payloadHash + "|" + prevHash) }. Rewriting any past record breaks every later hash, including the publicly anchored head. Anchoring proves history was never rewritten; the conformance suite proves the verdicts are honest. Both together are the whole claim.
+
+## More
+
+- [Full specification](https://sourced.ink) · [spec llms.txt](https://sourced.ink/llms.txt)
+- [Hosted assess API + playground](https://sourced.run)
+- MCP server for agents: `npx -y @sourcedhq/mcp` (tools: assess, verify_chain, run_conformance)

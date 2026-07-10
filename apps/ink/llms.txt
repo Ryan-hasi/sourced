@@ -1,0 +1,25 @@
+# Sourced
+
+> Corroboration as a primitive. Given a stream of claims from many origins, Sourced tells you how many INDEPENDENT sources corroborate each one, since when, and hands you the receipts. It says "confirmed by sources" — never "the truth". Zero-dependency TypeScript engine + free hosted API + MCP server for AI agents.
+
+Sourced answers exactly one question — how broadly is a claim corroborated by independent sources? — and answers it honestly. Core semantics: independence is counted by ORIGIN (ten syndicated copies of one wire story count as 1); matching is deliberately conservative (undercount, never overcount); single-origin claims stay unlabeled; every verdict carries receipts (which other origins, first seen when); the output vocabulary contains no "true". Signals: confirmed (≥4 origins), breaking (≥2 origins + published <30 min), developing (≥2 origins), null (single origin). These honesty guarantees (G1–G7) ship as an executable adversarial test suite, not as promises.
+
+Input shape per claim: { id, title, origin, publishedAt (ISO 8601) }. Output per claim: { corroboration, corroboratingSources[], firstSeenAt, signal } or null (unassessable — fail-open). Event grouping is pluggable (pass your own clusters); storage is injected (any KV); works for news, outage reports, OSINT, sensor fusion, moderation queues.
+
+## Use it
+
+- [Hosted API](https://sourced.run/api/assess): POST { claims: [{ id, title, origin, publishedAt }] } — free, no auth, CORS open, 200 claims/call, stateless (corroboration within the batch you send). GET the same URL for a machine-readable usage doc.
+- [Playground & API reference](https://sourced.run): request/response schemas, config keys, error table, curl/JS/Python examples.
+- MCP server for AI agents: `npx -y @sourcedhq/mcp` — tools: assess (with session memory across calls), verify_chain, run_conformance. Server name: "sourced".
+- npm: @sourcedhq/core (the engine, zero deps), @sourcedhq/conformance (G1–G7 suite, runnable against ANY engine), @sourcedhq/log (hash-chained transparency log), @sourcedhq/mcp.
+
+## Docs
+
+- [Full specification](https://sourced.ink): data model, algorithm (dual-gate matching: Jaccard ≥ 0.60 AND ≥3 shared tokens), configuration table, guarantees G1–G7, adversarial analysis.
+- [Proof surface](https://sourced.network): run the adversarial suite live against the engine; verify transparency chains; log record format and anchoring.
+
+## Facts
+
+- Production use: Tickwire (https://tickwire.news) — every "✓ N sources" badge is a Sourced verdict.
+- What Sourced is NOT: not a fact-checker, not a truth oracle, not bias/sentiment analysis, not a ranker.
+- Contact: hello@tickwire.news

@@ -1,0 +1,37 @@
+{
+  "name": "@sourcedhq/mcp",
+  "version": "0.1.0",
+  "description": "Sourced as an MCP server for AI agents: corroboration verdicts (assess), transparency-chain verification (verify_chain), and the G1–G7 honesty suite (run_conformance).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "sourced-mcp": "./dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc -p ."
+  },
+  "dependencies": {
+    "@sourcedhq/core": "*",
+    "@sourcedhq/log": "*",
+    "@sourcedhq/conformance": "*"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "corroboration",
+    "verification",
+    "grounding",
+    "sources"
+  ],
+  "license": "SEE LICENSE IN ../../README.md"
+}

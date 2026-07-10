@@ -3,6 +3,7 @@
   "references": [
     { "path": "packages/core" },
     { "path": "packages/log" },
-    { "path": "packages/conformance" }
+    { "path": "packages/conformance" },
+    { "path": "packages/mcp" }
   ]
 }

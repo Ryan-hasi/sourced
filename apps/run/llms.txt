@@ -1,0 +1,26 @@
+# Sourced RUN — hosted corroboration API
+
+> Free, no-auth, CORS-open endpoint for Sourced corroboration verdicts: POST claims, get back how many independent origins corroborate each one, with receipts. Never "true" — only "corroborated".
+
+## Endpoint
+
+POST https://sourced.run/api/assess (content-type: application/json)
+
+Request: { "claims": [{ "id": string, "title": string, "origin": string, "publishedAt": ISO-8601 }], "clusters"?: { [claimId]: origin[] }, "config"?: { numeric threshold overrides } }
+
+Response: { "verdicts": [ { "corroboration": n, "corroboratingSources": string[], "firstSeenAt": ISO-8601, "signal": "confirmed"|"breaking"|"developing"|null } | null ] } — verdicts[i] belongs to claims[i]; null = unassessable claim (passes through unlabeled, never an error).
+
+Semantics: stateless and batch-scoped — corroboration is computed across the claims in one request; same titles from different origins corroborate; copies from the same origin collapse to 1 (independence by origin); single-origin claims get signal null and no receipts. Limits: 200 claims / 200 kB per call. GET the endpoint for a machine-readable usage summary. Errors: 400 { "error": string } for a malformed envelope only.
+
+Example:
+curl -s https://sourced.run/api/assess -H "content-type: application/json" -d '{"claims":[{"id":"a","title":"Major dam breach reported upstream","origin":"reuters","publishedAt":"2026-07-10T21:00:00Z"},{"id":"b","title":"Major dam breach reported upstream","origin":"bbc","publishedAt":"2026-07-10T21:04:00Z"}]}'
+→ verdicts[1] = { "corroboration": 2, "corroboratingSources": ["reuters"], "signal": "breaking", ... }
+
+## For AI agents
+
+MCP server (stdio): `npx -y @sourcedhq/mcp` — server name "sourced", tools: assess (session memory accumulates corroboration across calls), verify_chain, run_conformance. Persistent event memory (first-seen across runs) = run @sourcedhq/core yourself with a store.
+
+## More
+
+- [Full specification](https://sourced.ink) · [spec llms.txt](https://sourced.ink/llms.txt)
+- [Proof: live adversarial suite + chain verifier](https://sourced.network)
