@@ -47,6 +47,9 @@
     <span>tests <strong>22 · adversarial suite 14/14</strong></span>
     <span>packages <strong>@sourcedhq/*</strong></span>
   </div>
+  <div class="live" id="live" hidden>
+    <span class="livedot"></span><span id="livetext"></span>
+  </div>
 </div>
 
 <nav class="toc" aria-label="Contents">
@@ -432,5 +435,20 @@
 </footer>
 
 </div>
+<script>
+// Live pulse: real Sourced verdicts from the production deployment. Honest or hidden.
+fetch("/api/live").then(r => r.json()).then(d => {
+  if (d.error || !d.claims) return;
+  const parts = [
+    d.claims + " claims from " + d.origins + " independent origins on the wire",
+    d.corroborated + " corroborated right now",
+  ];
+  if (d.top && d.top.corroboration >= 2) {
+    parts.push("top event “" + d.top.title + "” × " + d.top.corroboration + " sources");
+  }
+  document.getElementById("livetext").textContent = "LIVE · " + parts.join(" · ");
+  document.getElementById("live").hidden = false;
+}).catch(() => {});
+</script>
 </body>
 </html>
