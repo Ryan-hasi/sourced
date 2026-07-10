@@ -84,6 +84,20 @@ body {
 }
 .meta strong { color: var(--ink); font-weight: 600; }
 
+/* live pulse */
+.live {
+  margin-top: 18px; font-family: var(--mono); font-size: 12px; color: var(--dim);
+  display: flex; align-items: baseline; gap: 9px; max-width: 100%;
+}
+.livedot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--signal);
+  flex: none; align-self: center; animation: livepulse 1.6s ease-in-out infinite;
+}
+@keyframes livepulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(212, 17, 30, .35); }
+  50% { opacity: .55; box-shadow: 0 0 0 5px rgba(212, 17, 30, 0); }
+}
+
 /* table of contents */
 .toc {
   border: 1px solid var(--line); background: var(--wash); border-radius: 8px;
