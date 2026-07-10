@@ -38,5 +38,6 @@ write("apps/network/api/_conformance.mjs", conformance);
 
 for (const app of ["ink", "run", "network"]) {
   copyFileSync(join(root, "shared/site.css"), join(root, `apps/${app}/style.css`));
-  console.log(`synced apps/${app}/style.css`);
+  copyFileSync(join(root, "shared/site.js"), join(root, `apps/${app}/site.js`));
+  console.log(`synced apps/${app}/style.css + site.js`);
 }
