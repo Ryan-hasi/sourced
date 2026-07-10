@@ -1,0 +1,18 @@
+{
+  "name": "sourced-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Sourced — the corroboration primitive. Confirmed by sources, never 'true'.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "tsc -b"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

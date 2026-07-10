@@ -1,0 +1,345 @@
+/**
+ * @sourced/conformance — the yardstick.
+ *
+ * The honesty guarantees G1–G7 as an executable, adversarial test suite.
+ * It targets the `AssessFn` SHAPE, not our implementation — point it at any
+ * engine claiming to do corroboration and it will tell you whether that
+ * engine is Sourced-honest or just counting volume.
+ *
+ * Whoever publishes the yardstick defines the category. This is it.
+ */
+import {
+  assess as coreAssess,
+  createMemoryStore,
+  type AssessFn,
+  type Claim,
+} from "@sourced/core";
+
+export type CaseResult = { id: string; guarantee: string; pass: boolean; detail: string };
+export type ConformanceCase = {
+  id: string;
+  guarantee: string;
+  title: string;
+  run(assess: AssessFn): Promise<CaseResult>;
+};
+
+const T0 = Date.UTC(2026, 0, 1, 12, 0, 0); // fixed clock — determinism is part of the contract
+
+const claim = (id: string, title: string, origin: string, publishedAgoMin = 5): Claim => ({
+  id,
+  title,
+  origin,
+  publishedAt: new Date(T0 - publishedAgoMin * 60_000).toISOString(),
+});
+
+const ok = (id: string, guarantee: string, detail: string): CaseResult => ({ id, guarantee, pass: true, detail });
+const fail = (id: string, guarantee: string, detail: string): CaseResult => ({ id, guarantee, pass: false, detail });
+
+export const CASES: ConformanceCase[] = [
+  {
+    id: "g1-no-coincidental-merge",
+    guarantee: "G1",
+    title: "Two short titles sharing 2 tokens by chance must NOT corroborate each other",
+    async run(assess) {
+      // jaccard("tesla recall", "tesla recall expands") = 2/3 ≈ 0.67 ≥ 0.6,
+      // but only 2 shared tokens — the dual gate must block the merge.
+      const v = await assess(
+        [
+          claim("a", "Tesla recall", "outlet-a"),
+          claim("b", "Tesla recall expands", "outlet-b"),
+        ],
+        { now: T0 },
+      );
+      const merged = (v[1]?.corroboration ?? 0) > 1 || (v[0]?.corroboration ?? 0) > 1;
+      return merged
+        ? fail(this.id, this.guarantee, `coincidental 2-token overlap merged: ${JSON.stringify(v)}`)
+        : ok(this.id, this.guarantee, "dual gate held — undercount preferred over false corroboration");
+    },
+  },
+  {
+    id: "g1-real-merge-still-works",
+    guarantee: "G1",
+    title: "Genuinely identical events across 4 origins DO corroborate (sanity)",
+    async run(assess) {
+      const title = "Central bank raises interest rates quarter point";
+      const v = await assess(
+        [
+          claim("a", title, "reuters"),
+          claim("b", title, "bbc"),
+          claim("c", title, "ap"),
+          claim("d", title, "aljazeera"),
+        ],
+        { now: T0 },
+      );
+      const last = v[3];
+      if (!last) return fail(this.id, this.guarantee, "no verdict for corroborated claim");
+      return last.corroboration === 4 && last.signal === "confirmed"
+        ? ok(this.id, this.guarantee, "4 distinct origins → corroboration 4, confirmed")
+        : fail(this.id, this.guarantee, `expected 4/confirmed, got ${JSON.stringify(last)}`);
+    },
+  },
+  {
+    id: "g1-hijack-resistance",
+    guarantee: "G1/§7",
+    title: "A keyword-stuffed title must not hijack an existing event",
+    async run(assess) {
+      const store = createMemoryStore();
+      await assess(
+        [
+          claim("a", "Parliament passes landmark climate bill", "outlet-a"),
+          claim("b", "Parliament passes landmark climate bill", "outlet-b"),
+        ],
+        { now: T0, store },
+      );
+      // Attacker shares 3 tokens but buries them in noise → jaccard collapses.
+      const v = await assess(
+        [claim("x", "Parliament climate bill casino bonus crypto winner jackpot deals", "attacker")],
+        { now: T0 + 60_000, store },
+      );
+      return (v[0]?.corroboration ?? 0) > 1
+        ? fail(this.id, this.guarantee, `hijack merged into real event: ${JSON.stringify(v[0])}`)
+        : ok(this.id, this.guarantee, "low-similarity stuffed title stayed its own single-source event");
+    },
+  },
+  {
+    id: "g3-syndication-collapses",
+    guarantee: "G3",
+    title: "Ten copies from ONE origin count as corroboration 1",
+    async run(assess) {
+      const title = "Volcano erupts on remote island archipelago";
+      const copies = Array.from({ length: 10 }, (_, i) => claim(`c${i}`, title, "wire-service"));
+      const v = await assess(copies, { now: T0 });
+      const last = v[9];
+      if (!last) return fail(this.id, this.guarantee, "no verdict");
+      return last.corroboration === 1 && last.signal === null
+        ? ok(this.id, this.guarantee, "10 articles, 1 origin → corroboration 1, unlabeled")
+        : fail(this.id, this.guarantee, `syndication inflated the count: ${JSON.stringify(last)}`);
+    },
+  },
+  {
+    id: "g3-cluster-duplicate-origins",
+    guarantee: "G3",
+    title: "Duplicate origins inside a provided cluster still count once",
+    async run(assess) {
+      const v = await assess(
+        [claim("a", "Major bridge closed after inspection finds cracks", "outlet-a")],
+        {
+          now: T0,
+          clusters: { a: ["outlet-a", "outlet-a", "outlet-b", "outlet-b", "outlet-b"] },
+        },
+      );
+      return v[0]?.corroboration === 2
+        ? ok(this.id, this.guarantee, "cluster with duplicates → 2 distinct origins")
+        : fail(this.id, this.guarantee, `expected 2, got ${JSON.stringify(v[0])}`);
+    },
+  },
+  {
+    id: "g4-receipts-always",
+    guarantee: "G4",
+    title: "A corroborated verdict names the other origins, never its own, capped",
+    async run(assess) {
+      const title = "Spacecraft achieves orbit around distant asteroid target";
+      const origins = ["o1", "o2", "o3", "o4", "o5", "o6", "o7", "o8", "o9"];
+      const v = await assess(
+        origins.map((o, i) => claim(`r${i}`, title, o)),
+        { now: T0 },
+      );
+      const last = v[8];
+      if (!last) return fail(this.id, this.guarantee, "no verdict");
+      const receipts = last.corroboratingSources;
+      if (receipts.includes("o9")) return fail(this.id, this.guarantee, "receipts include the claim's own origin");
+      if (receipts.length === 0) return fail(this.id, this.guarantee, "corroborated verdict shipped without receipts");
+      if (receipts.length > 6) return fail(this.id, this.guarantee, `receipts exceed cap: ${receipts.length}`);
+      return ok(this.id, this.guarantee, `receipts present (${receipts.length}), own origin excluded, cap respected`);
+    },
+  },
+  {
+    id: "g5-single-source-stays-bare",
+    guarantee: "G5",
+    title: "A one-origin claim gets no signal and no receipts",
+    async run(assess) {
+      const v = await assess(
+        [claim("a", "Exclusive report alleges hidden factory emissions scandal", "lone-outlet", 1)],
+        { now: T0 },
+      );
+      const verdict = v[0];
+      if (!verdict) return fail(this.id, this.guarantee, "no verdict");
+      return verdict.corroboration === 1 && verdict.signal === null && verdict.corroboratingSources.length === 0
+        ? ok(this.id, this.guarantee, "single origin: count 1, signal null, no receipts")
+        : fail(this.id, this.guarantee, `single source got decorated: ${JSON.stringify(verdict)}`);
+    },
+  },
+  {
+    id: "g6-no-fake-urgency",
+    guarantee: "G6",
+    title: "An OLD story newly corroborated must be 'developing', never 'breaking'",
+    async run(assess) {
+      const title = "Historic dam removal project finally completed";
+      const v = await assess(
+        [
+          claim("a", title, "outlet-a", 300), // published 5 h ago
+          claim("b", title, "outlet-b", 290),
+        ],
+        { now: T0 },
+      );
+      const last = v[1];
+      if (!last) return fail(this.id, this.guarantee, "no verdict");
+      return last.signal === "developing"
+        ? ok(this.id, this.guarantee, "old publish time → developing, urgency not invented")
+        : fail(this.id, this.guarantee, `expected developing, got ${JSON.stringify(last.signal)}`);
+    },
+  },
+  {
+    id: "g6-breaking-rides-publish-clock",
+    guarantee: "G6",
+    title: "'breaking' requires a fresh PUBLISH timestamp (and corroboration)",
+    async run(assess) {
+      const title = "Magnitude six earthquake strikes coastal region tonight";
+      const v = await assess(
+        [
+          claim("a", title, "outlet-a", 5),
+          claim("b", title, "outlet-b", 3),
+        ],
+        { now: T0 },
+      );
+      return v[1]?.signal === "breaking"
+        ? ok(this.id, this.guarantee, "fresh + corroborated → breaking")
+        : fail(this.id, this.guarantee, `expected breaking, got ${JSON.stringify(v[1])}`);
+    },
+  },
+  {
+    id: "g2-vocabulary",
+    guarantee: "G2",
+    title: "The verdict vocabulary never contains a truth claim",
+    async run(assess) {
+      const title = "Global summit reaches provisional trade agreement draft";
+      const v = await assess(
+        Array.from({ length: 5 }, (_, i) => claim(`t${i}`, title, `origin-${i}`)),
+        { now: T0 },
+      );
+      const allowed = new Set(["confirmed", "breaking", "developing", null]);
+      for (const verdict of v) {
+        if (!verdict) continue;
+        if (!allowed.has(verdict.signal)) {
+          return fail(this.id, this.guarantee, `illegal signal value: ${String(verdict.signal)}`);
+        }
+        const json = JSON.stringify(verdict).toLowerCase();
+        if (json.includes('"true"') || json.includes("truth")) {
+          return fail(this.id, this.guarantee, "verdict payload asserts truth");
+        }
+      }
+      return ok(this.id, this.guarantee, "output vocabulary is corroboration-only");
+    },
+  },
+  {
+    id: "g7-fail-open-broken-store",
+    guarantee: "G7",
+    title: "A store that throws on load AND save must not break the stream",
+    async run(assess) {
+      const bomb = {
+        load(): never {
+          throw new Error("storage down");
+        },
+        save(): never {
+          throw new Error("storage down");
+        },
+      };
+      try {
+        const v = await assess(
+          [
+            claim("a", "Ferry service suspended after harbor incident report", "outlet-a"),
+            claim("b", "Ferry service suspended after harbor incident report", "outlet-b"),
+          ],
+          { now: T0, store: bomb },
+        );
+        return v.length === 2 && v[1]?.corroboration === 2
+          ? ok(this.id, this.guarantee, "verdicts still computed from batch despite dead storage")
+          : fail(this.id, this.guarantee, `degraded wrong: ${JSON.stringify(v)}`);
+      } catch (e) {
+        return fail(this.id, this.guarantee, `assess threw: ${String(e)}`);
+      }
+    },
+  },
+  {
+    id: "g7-fail-open-garbage-input",
+    guarantee: "G7",
+    title: "Garbage input degrades to unlabeled, never throws",
+    async run(assess) {
+      try {
+        const v = await assess(
+          [
+            { id: "a", title: "", origin: "x", publishedAt: "not-a-date" },
+            { id: "b", title: "of the and to", origin: "y", publishedAt: "" }, // stopwords only
+          ],
+          { now: T0 },
+        );
+        return v.length === 2 && v[0] === null && v[1] === null
+          ? ok(this.id, this.guarantee, "unassessable claims pass through as null verdicts")
+          : fail(this.id, this.guarantee, `expected [null,null], got ${JSON.stringify(v)}`);
+      } catch (e) {
+        return fail(this.id, this.guarantee, `assess threw on garbage: ${String(e)}`);
+      }
+    },
+  },
+  {
+    id: "memory-first-seen-persists",
+    guarantee: "§4",
+    title: "first-seen survives across runs; corroboration accumulates in the store",
+    async run(assess) {
+      const store = createMemoryStore();
+      const title = "Rare deep sea creature filmed near ocean trench";
+      const run1 = await assess([claim("a", title, "outlet-a")], { now: T0, store });
+      const run2 = await assess([claim("b", title, "outlet-b")], { now: T0 + 3_600_000, store });
+      const first = run1[0]?.firstSeenAt;
+      const second = run2[0];
+      if (!first || !second) return fail(this.id, this.guarantee, "missing verdicts");
+      if (second.firstSeenAt !== first) {
+        return fail(this.id, this.guarantee, `first-seen drifted: ${first} → ${second.firstSeenAt}`);
+      }
+      return second.corroboration === 2
+        ? ok(this.id, this.guarantee, "first-seen stable, history accumulated to 2 origins")
+        : fail(this.id, this.guarantee, `history did not accumulate: ${JSON.stringify(second)}`);
+    },
+  },
+  {
+    id: "memory-ttl-retires-to-archive",
+    guarantee: "§4/§14",
+    title: "Expired events leave the working set INTO the archive, not into oblivion",
+    async run(assess) {
+      const store = createMemoryStore();
+      const retired: unknown[] = [];
+      await assess(
+        [claim("a", "City council approves new tramline extension plan", "outlet-a")],
+        { now: T0, store, archive: (evs) => void retired.push(...evs) },
+      );
+      // 48 h later (past the 36 h TTL) an unrelated claim triggers a fold.
+      await assess(
+        [claim("b", "Astronomers discover unusual binary star system nearby", "outlet-b")],
+        { now: T0 + 48 * 3_600_000, store, archive: (evs) => void retired.push(...evs) },
+      );
+      const snapshot = store.snapshot();
+      const stillThere = Object.values(snapshot).some((e) => e.title.includes("tramline"));
+      if (stillThere) return fail(this.id, this.guarantee, "expired event still in working set");
+      return retired.length === 1
+        ? ok(this.id, this.guarantee, "expired event retired into the archive sink")
+        : fail(this.id, this.guarantee, `archive received ${retired.length} events, expected 1`);
+    },
+  },
+];
+
+export type SuiteResult = {
+  passed: number;
+  failed: number;
+  results: CaseResult[];
+};
+
+/** Run the whole yardstick against any implementation of the primitive. */
+export async function runConformance(assess: AssessFn = coreAssess): Promise<SuiteResult> {
+  const results: CaseResult[] = [];
+  for (const c of CASES) results.push(await c.run(assess));
+  return {
+    passed: results.filter((r) => r.pass).length,
+    failed: results.filter((r) => !r.pass).length,
+    results,
+  };
+}
