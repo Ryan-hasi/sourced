@@ -1,5 +1,5 @@
 /**
- * @sourced/log — the transparency log.
+ * @sourcedhq/log — the transparency log.
  *
  * Every verdict batch is appended to a hash chain: each record commits to the
  * previous record's hash (Certificate-Transparency style). Publish the chain

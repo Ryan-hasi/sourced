@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sourced — corroboration as a primitive</title>
-<meta name="description" content="Sourced tells you how many independent sources corroborate a claim, since when, with receipts. Confirmed by sources — never 'true'.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23e5484d'/%3E%3C/svg%3E">
+<title>Sourced — corroboration as a primitive · Specification</title>
+<meta name="description" content="Sourced counts how many independent sources corroborate a claim, since when, with receipts. Full specification: data model, algorithm, configuration, honesty guarantees G1–G7.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23d4111e'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 <meta property="og:title" content="Sourced — corroboration as a primitive">
-<meta property="og:description" content="How many independent sources corroborate this, since when, and who. Never 'true' — always sourced.">
+<meta property="og:description" content="How many independent sources corroborate this claim, since when, and who. Never 'true' — always sourced. Full spec.">
 </head>
 <body>
 <div class="wrap">
@@ -24,98 +24,384 @@
 
 <div class="hero">
   <div class="kicker">Corroboration as a primitive</div>
-  <h1>Confirmed by sources.<br>Never <em>“true.”</em></h1>
+  <h1>Sourced</h1>
   <p class="sub">
     Given a stream of claims from many origins, Sourced tells you how many
-    <strong>independent</strong> sources corroborate each one, since when —
-    and hands you the receipts. One small function. No truth oracle attached.
+    <strong>independent</strong> sources corroborate each one, since when, and
+    hands you the receipts. It says <em>“confirmed by sources”</em> — never
+    <em>“the truth.”</em> This page is the specification.
   </p>
-  <div class="row" style="margin-top:28px">
-    <a class="btn" href="https://sourced.run">TRY IT LIVE</a>
-    <a class="btn ghost" href="https://sourced.network">VERIFY US</a>
+  <div class="meta">
+    <span>version <strong>0.1.0</strong></span>
+    <span>language <strong>TypeScript</strong></span>
+    <span>runtime deps <strong>0</strong></span>
+    <span>tests <strong>22 · adversarial suite 14/14</strong></span>
+    <span>packages <strong>@sourcedhq/*</strong></span>
   </div>
 </div>
 
-<section>
-  <h2>The missing layer</h2>
+<nav class="toc" aria-label="Contents">
+  <a href="#overview">1 · What Sourced is (and is not)</a>
+  <a href="#quickstart">2 · Quick start</a>
+  <a href="#model">3 · Data model</a>
+  <a href="#algorithm">4 · The algorithm</a>
+  <a href="#config">5 · Configuration</a>
+  <a href="#guarantees">6 · Honesty guarantees G1–G7</a>
+  <a href="#adversarial">7 · Adversarial analysis</a>
+  <a href="#domains">8 · Beyond news</a>
+  <a href="#api">9 · Hosted API</a>
+  <a href="#conformance">10 · Conformance</a>
+  <a href="#log">11 · Transparency log</a>
+  <a href="#packages">12 · Packages, status, license</a>
+</nav>
+
+<section id="overview">
+  <h2><span class="no">1</span>What Sourced is (and is not)</h2>
   <p>
-    Every feed, every aggregator, every “is this real?” moment re-solves the same
-    problem badly or not at all: a thousand items, each equally loud, no signal for
-    which ones the world actually agrees happened. The reader is left to eyeball
-    logos and guess.
+    Every feed, every aggregator, every “is this real?” moment re-solves the
+    same problem badly or not at all: a thousand items, each equally loud, with
+    no signal for which ones the world actually agrees happened. The missing
+    layer is the oldest heuristic in journalism — <em>get a second source</em> —
+    computed continuously over a live stream. Sourced ships that layer as one
+    small, dependency-free function.
   </p>
   <p>
-    The missing layer is the oldest heuristic in journalism —
-    <em>get a second source</em> — computed continuously over a live stream,
-    honestly. Sourced is that layer. It answers exactly one question:
-    <strong>how broadly is this corroborated?</strong> And it answers it with
-    receipts, because “six independent outlets report this, first seen 17:04” is a
-    checkable fact about the world’s reporting — not a verdict handed down.
+    The framing is load-bearing: Sourced never claims a thing is
+    <em>true</em>. Truth is not a property you can compute from headlines —
+    <strong>corroboration is</strong>. “Six independent outlets report this,
+    first seen 17:04” is a checkable fact about the world’s reporting, not a
+    verdict handed down. This distinction is the difference between a trust
+    layer that earns credibility and one that inflates it until it pops.
   </p>
-</section>
-
-<section>
-  <h2>One call</h2>
-<pre><span class="k">import</span> { assess } <span class="k">from</span> <span class="s">"@sourced/core"</span>;
-
-<span class="k">const</span> verdicts = <span class="k">await</span> assess([
-  { id: <span class="s">"a"</span>, title: <span class="s">"Central bank raises rates"</span>, origin: <span class="s">"reuters"</span>, publishedAt: <span class="s">"2026-01-01T12:00Z"</span> },
-  { id: <span class="s">"b"</span>, title: <span class="s">"Central bank raises rates"</span>, origin: <span class="s">"bbc"</span>,     publishedAt: <span class="s">"2026-01-01T12:04Z"</span> },
-]);
-
-<span class="c">// → { corroboration: 2,                  // distinct INDEPENDENT origins</span>
-<span class="c">//     corroboratingSources: ["reuters"],  // the receipts</span>
-<span class="c">//     firstSeenAt: "2026-01-01T12:…",     // event memory</span>
-<span class="c">//     signal: "breaking" }                // confirmed | breaking | developing | null</span></pre>
+  <h3>Deliberately not</h3>
+  <ul>
+    <li><strong>Not a fact-checker</strong> — it counts sources; it does not adjudicate claims.</li>
+    <li><strong>Not a truth oracle</strong> — the output vocabulary contains no “true” (guarantee G2).</li>
+    <li><strong>Not sentiment or bias analysis</strong> — an orthogonal concern, left to others.</li>
+    <li><strong>Not a recommender or ranker</strong> — it annotates; it never reorders for engagement.</li>
+    <li><strong>Not ML-bound</strong> — event grouping is pluggable (LLM, regex, embeddings, upstream editor); the counting and the guarantees are independent of it.</li>
+  </ul>
   <p class="muted small">
-    Zero dependencies. Storage, clustering, clock and thresholds are injected —
-    the primitive only counts. How you group “same event” (LLM, regex,
-    embeddings, an upstream editor) stays out of the block.
+    The surface stays this small on purpose. A building block does one thing
+    well enough that a hundred products can lean on it — the narrower the
+    surface, the wider the reach.
   </p>
 </section>
 
-<section>
-  <h2>The honesty guarantees</h2>
-  <p class="muted small" style="margin-bottom:16px">
-    Invariants, not preferences — and they ship as an executable adversarial
-    test suite, not as promises. <a href="https://sourced.network">Watch them pass, live.</a>
+<section id="quickstart">
+  <h2><span class="no">2</span>Quick start</h2>
+<pre><code><span class="k">import</span> { assess, createMemoryStore } <span class="k">from</span> <span class="s">"@sourcedhq/core"</span>;
+
+<span class="k">const</span> store = createMemoryStore(); <span class="c">// or your KV / SQLite / file — anything with load()/save()</span>
+
+<span class="k">const</span> verdicts = <span class="k">await</span> assess(
+  [
+    { id: <span class="s">"a"</span>, title: <span class="s">"Central bank raises rates"</span>, origin: <span class="s">"reuters"</span>, publishedAt: <span class="s">"2026-01-01T12:00:00Z"</span> },
+    { id: <span class="s">"b"</span>, title: <span class="s">"Central bank raises rates"</span>, origin: <span class="s">"bbc"</span>,     publishedAt: <span class="s">"2026-01-01T12:04:00Z"</span> },
+    { id: <span class="s">"c"</span>, title: <span class="s">"Celebrity opens restaurant"</span>,  origin: <span class="s">"gossip"</span>,  publishedAt: <span class="s">"2026-01-01T12:05:00Z"</span> },
+  ],
+  { store },
+);
+
+<span class="c">// verdicts[1] — the BBC claim:</span>
+<span class="c">// {</span>
+<span class="c">//   corroboration: 2,                  // distinct independent origins reporting this event</span>
+<span class="c">//   corroboratingSources: ["reuters"], // the receipts: who else (never the claim's own origin)</span>
+<span class="c">//   firstSeenAt: "2026-01-01T12:…",    // when THIS system first saw the event (persists across runs)</span>
+<span class="c">//   signal: "breaking"                 // "confirmed" | "breaking" | "developing" | null</span>
+<span class="c">// }</span>
+<span class="c">//</span>
+<span class="c">// verdicts[2] — the single-origin claim:</span>
+<span class="c">// { corroboration: 1, corroboratingSources: [], firstSeenAt: "…", signal: null }   // bare, by design (G5)</span></code></pre>
+  <p>
+    One call. Verdicts come back in input order, <code>null</code> for claims
+    that cannot be assessed (e.g. a title with no meaning-bearing tokens) —
+    those simply pass through unlabeled. <code>assess</code> never throws into
+    the stream it annotates (G7).
   </p>
+  <p class="muted small">
+    Prefer to try it without installing anything? The hosted playground and API
+    live at <a href="https://sourced.run">sourced.run</a>.
+  </p>
+</section>
+
+<section id="model">
+  <h2><span class="no">3</span>Data model</h2>
+
+  <h3>Claim — what you put in</h3>
   <div class="tablebox"><table>
-    <tr><th>#</th><th>Guarantee</th></tr>
-    <tr><td>G1</td><td><strong>Undercount, never overcount.</strong> Matching is deliberately conservative. A false “confirmed” is a reputation balloon that pops — Sourced always errs toward saying less.</td></tr>
-    <tr><td>G2</td><td><strong>Never “true,” only “corroborated.”</strong> Truth is not computable from headlines; breadth of independent reporting is.</td></tr>
-    <tr><td>G3</td><td><strong>Independence is by origin, not by article.</strong> Ten syndicated copies of one wire story count as one.</td></tr>
-    <tr><td>G4</td><td><strong>Every verdict carries its receipts</strong> — who corroborated, since when. Falsifiable by design.</td></tr>
-    <tr><td>G5</td><td><strong>Single sources stay bare.</strong> No badge, no signal. Silence protects credibility.</td></tr>
-    <tr><td>G6</td><td><strong>Signal rides the reliable clock.</strong> Urgency comes from upstream publish time — a matching error can never invent “breaking.”</td></tr>
-    <tr><td>G7</td><td><strong>Fail open, never break.</strong> Dead storage, garbage input → claims pass through unlabeled. Degrading is safe; crashing is not.</td></tr>
+    <tr><th>Field</th><th>Type</th><th>Semantics</th></tr>
+    <tr><td>id <span class="req">required</span></td><td>string</td><td>Stable identity of this report. Used to look up an entry in <code>clusters</code>; echoed nowhere else.</td></tr>
+    <tr><td>title <span class="req">required</span></td><td>string</td><td>The claim, in words. Event identity is derived from its meaning-bearing tokens (§4.1). The freshest wording seen for an event is retained.</td></tr>
+    <tr><td>origin <span class="req">required</span></td><td>string</td><td>The source making the claim — <strong>the unit of independence</strong> (G3). Two claims share an origin iff these strings are equal, so normalize upstream (e.g. always <code>"reuters"</code>, not sometimes <code>"Reuters UK"</code>).</td></tr>
+    <tr><td>publishedAt <span class="req">required</span></td><td>string (ISO 8601)</td><td>When the report was published, per the upstream feed. Drives the urgency signal (G6). An unparseable value disables “breaking” for that claim but nothing else.</td></tr>
+  </table></div>
+
+  <h3>Verdict — what you get back</h3>
+  <div class="tablebox"><table>
+    <tr><th>Field</th><th>Type</th><th>Semantics</th></tr>
+    <tr><td>corroboration</td><td>number ≥ 1</td><td>Count of <strong>distinct</strong> independent origins that have reported this event — this batch <em>plus</em> everything remembered in the store. Syndicated copies collapse (G3).</td></tr>
+    <tr><td>corroboratingSources</td><td>string[]</td><td>The receipts: which <em>other</em> origins reported it. Never contains the claim’s own origin; capped at <code>receiptsCap</code> (default 6). Empty when <code>corroboration = 1</code>.</td></tr>
+    <tr><td>firstSeenAt</td><td>string (ISO 8601)</td><td>When <em>this system</em> first saw the event. Persists across runs via the store — the accumulated first-seen timeline is data you cannot reconstruct later.</td></tr>
+    <tr><td>signal</td><td>"confirmed" · "breaking" · "developing" · null</td><td>Derived label (§4.4). <code>null</code> for single-origin claims — silence protects credibility (G5). Note what is <em>absent</em>: there is no “true”, no score of veracity (G2).</td></tr>
+  </table></div>
+
+  <h3>Injected collaborators</h3>
+  <div class="tablebox"><table>
+    <tr><th>Option</th><th>Shape</th><th>Semantics</th></tr>
+    <tr><td>store <span class="opt">optional</span></td><td>{ load(), save(store) }</td><td>Event memory between runs. Both methods may be sync or async; any durable KV works (Redis, SQLite, a file, memory). Omitted → corroboration is computed within the batch only. Load/save failures degrade gracefully (G7).</td></tr>
+    <tr><td>clusters <span class="opt">optional</span></td><td>Map&lt;claimId, origin[]&gt; or plain object</td><td>Pre-grouped “these origins reported the same event in this batch”, produced by any clustering you like — an LLM pass, regex, embeddings, an upstream editor. Sourced only counts; it never groups. No entry → the claim contributes just its own origin.</td></tr>
+    <tr><td>archive <span class="opt">optional</span></td><td>(retired: StoredEvent[]) =&gt; void</td><td>Where events go when they leave the working set (TTL or cap, §4.5) — into your archive, not into oblivion. The full history of first-seen timelines is the long-term asset.</td></tr>
+    <tr><td>now <span class="opt">optional</span></td><td>number (epoch ms)</td><td>Injected clock. Makes runs deterministic and testable; defaults to <code>Date.now()</code>.</td></tr>
+    <tr><td>config <span class="opt">optional</span></td><td>Partial&lt;Config&gt;</td><td>Threshold overrides — see §5. The defaults are the contract.</td></tr>
   </table></div>
 </section>
 
-<section>
-  <h2>Beyond news</h2>
-  <p class="muted small" style="margin-bottom:16px">
-    The unit is <code>(claim, origin, timestamp)</code> — not “a news article.”
-    Any domain with independent reports of discrete events fits.
+<section id="algorithm">
+  <h2><span class="no">4</span>The algorithm</h2>
+  <p>
+    Sourced maintains a persistent <strong>event store</strong> and folds each
+    batch of claims into it. Five steps, all deterministic given the same
+    inputs and clock:
   </p>
+
+  <h3>4.1 · Identity</h3>
+  <p>
+    A title is reduced to meaning-bearing tokens: lowercased, punctuation
+    stripped, stopwords removed (EN + DE built in, injectable), tokens shorter
+    than 3 characters dropped. The deterministic event <strong>key</strong> is
+    the sorted set of the top 8 tokens. Same key → same event, no similarity
+    math needed.
+  </p>
+
+  <h3>4.2 · Matching (the dual gate)</h3>
+  <p>
+    If the key doesn’t match an existing event, a similarity fallback runs —
+    but merging requires <strong>both</strong> gates to hold:
+  </p>
+  <ul>
+    <li>Jaccard similarity of token sets ≥ <code>0.60</code>, <em>and</em></li>
+    <li>at least <code>3</code> shared meaning-bearing tokens.</li>
+  </ul>
+  <p>
+    Why both: short headlines can reach high Jaccard from two words shared by
+    chance (<code>"Tesla recall"</code> vs <code>"Tesla recall expands"</code>
+    scores 0.67 on two tokens). The token floor blocks that; the similarity
+    floor blocks keyword-stuffed titles that share 3 tokens buried in noise.
+    This is guarantee G1 in mechanical form: when in doubt, do <em>not</em>
+    merge — a missed corroboration costs little, a false “confirmed” costs the
+    only thing that matters.
+  </p>
+
+  <h3>4.3 · Counting</h3>
+  <p>
+    A matched claim joins its event: the event’s origin set becomes the union
+    of every distinct origin ever seen for it (this batch ∪ history), and the
+    freshest title wording is retained.
+    <code>corroboration = |distinct origins|</code>. The receipts are the
+    other origins, capped for display. Articles are never counted — origins
+    are (G3).
+  </p>
+
+  <h3>4.4 · Signal</h3>
   <div class="tablebox"><table>
-    <tr><th>Domain</th><th>A “claim” is…</th><th>The verdict answers</th></tr>
-    <tr><td>News</td><td>a headline from an outlet</td><td>how broadly is this reported?</td></tr>
-    <tr><td>Outages</td><td>a failure report from a monitor</td><td>real outage, or one flaky probe?</td></tr>
-    <tr><td>OSINT</td><td>a field report from an account</td><td>how many independent eyes confirm it?</td></tr>
-    <tr><td>Moderation</td><td>a flag from a reporter</td><td>genuinely mass-flagged, honestly counted?</td></tr>
-    <tr><td>Sensors</td><td>a detection from a sensor</td><td>do multiple sensors agree?</td></tr>
+    <tr><th>Signal</th><th>Condition (defaults)</th><th>Reading</th></tr>
+    <tr><td>confirmed</td><td>corroboration ≥ 4</td><td>Broadly corroborated across independent origins.</td></tr>
+    <tr><td>breaking</td><td>corroboration ≥ 2 and published &lt; 30 min ago</td><td>Corroborated and fresh — by the <em>upstream</em> publish clock.</td></tr>
+    <tr><td>developing</td><td>corroboration ≥ 2</td><td>Corroborated, not fresh.</td></tr>
+    <tr><td>null</td><td>corroboration = 1</td><td>A single origin stays unlabeled. Always (G5).</td></tr>
   </table></div>
+  <p>
+    The age test uses the claim’s <strong>published timestamp</strong> — a
+    reliable upstream value — never Sourced’s own <code>firstSeenAt</code>
+    guess. Consequence: an identity mistake can shift a count, but it can
+    never invent urgency (G6).
+  </p>
+
+  <h3>4.5 · Decay, bound, archive</h3>
+  <p>
+    The <em>working set</em> stays bounded so matching stays sharp: events
+    unseen for 36 h retire, and the store caps at the 400 most-recently-seen
+    events. Retiring events are handed to your <code>archive</code> sink rather
+    than deleted — corroboration reflects a living window, while the full
+    history (every event, every first-seen timestamp) accumulates forever in
+    your archive. That history is the part of a Sourced deployment nobody can
+    copy out of a feed later.
+  </p>
 </section>
 
-<section>
-  <h2>Who runs on it</h2>
-  <div class="card">
-    <strong>Tickwire</strong> — the live news channel for the screen you already
-    leave on — is built on Sourced. Every <span style="color:var(--ok)">✓ N sources</span>
-    badge in the app is a Sourced verdict, receipts included.
-    <div style="margin-top:10px"><a class="small" href="https://tickwire.news">tickwire.news →</a></div>
+<section id="config">
+  <h2><span class="no">5</span>Configuration</h2>
+  <div class="note warn">
+    The defaults <strong>are</strong> the honesty contract. They encode
+    undercount-never-overcount (G1). Every knob can be tightened freely;
+    <em>loosening</em> mergeSimilarity or minSharedTokens trades away exactly
+    the guarantee that makes a corroboration count worth trusting — do it
+    knowingly or not at all.
   </div>
+  <div class="tablebox"><table>
+    <tr><th>Key</th><th>Default</th><th>Meaning</th><th>Effect of changing</th></tr>
+    <tr><td>mergeSimilarity</td><td>0.60</td><td>Jaccard floor for merging two events (gate 1 of 2).</td><td>Higher = stricter identity, more undercounting. Lower = false merges → inflated counts.</td></tr>
+    <tr><td>minSharedTokens</td><td>3</td><td>Minimum shared meaning tokens for a merge (gate 2 of 2).</td><td>Higher = resists short-title coincidence even harder. Lower than 3 re-opens the two-word-overlap trap.</td></tr>
+    <tr><td>confirmedAt</td><td>4</td><td>Origins needed for “confirmed”.</td><td>Raise for high-stakes domains; lowering cheapens the strongest label.</td></tr>
+    <tr><td>corroboratedAt</td><td>2</td><td>Origins needed for “developing”/“breaking”.</td><td>2 is the floor by definition — corroboration starts at a second source.</td></tr>
+    <tr><td>breakingWindowMs</td><td>1 800 000 (30 min)</td><td>Publish-age window for “breaking”.</td><td>Match to your domain’s tempo: minutes for outages, hours for policy news.</td></tr>
+    <tr><td>eventTtlMs</td><td>129 600 000 (36 h)</td><td>Unseen this long → event retires (to the archive).</td><td>Longer = corroboration accumulates across slower news cycles; matching window grows accordingly.</td></tr>
+    <tr><td>maxEvents</td><td>400</td><td>Working-set cap; most-recently-seen win.</td><td>Size to your stream: roughly “events alive in one TTL window”.</td></tr>
+    <tr><td>receiptsCap</td><td>6</td><td>Max receipts returned per verdict.</td><td>Display concern only — the count itself is never capped.</td></tr>
+    <tr><td>keyTokens</td><td>8</td><td>Tokens forming the deterministic event key.</td><td>Rarely touched; affects exact-key hit rate, not safety (the dual gate still governs merges).</td></tr>
+    <tr><td>stopwords</td><td>EN + DE set</td><td>Tokens carrying no event identity.</td><td>Replace when deploying into another language domain.</td></tr>
+  </table></div>
+</section>
+
+<section id="guarantees">
+  <h2><span class="no">6</span>Honesty guarantees G1–G7</h2>
+  <p class="muted small" style="margin-bottom:6px">
+    Invariants, not preferences — each one is enforced by adversarial cases in
+    the conformance suite, which you can
+    <a href="https://sourced.network">run live right now</a>.
+  </p>
+  <div class="tablebox"><table>
+    <tr><th>#</th><th>Guarantee</th><th>Mechanism</th></tr>
+    <tr><td>G1</td><td><strong>Undercount, never overcount.</strong> Sourced would rather miss a real corroboration than manufacture a false one.</td><td>Dual-gate matching (§4.2). A false “confirmed” is a reputation balloon that pops; all tuning errs toward saying less.</td></tr>
+    <tr><td>G2</td><td><strong>Never “true,” only “corroborated.”</strong> Confirmation is not truth, and Sourced does not blur the two.</td><td>The output vocabulary is <code>N sources</code> / <code>confirmed</code> / <code>developing</code> / <code>breaking</code> — statements about <em>reporting</em>, with receipts. No veracity field exists.</td></tr>
+    <tr><td>G3</td><td><strong>Independence is by origin, not by article.</strong> Ten copies of one wire story across ten pages count as one.</td><td>Origins are a set; duplicates collapse on entry, whether they arrive as separate claims or inside a cluster.</td></tr>
+    <tr><td>G4</td><td><strong>Every verdict carries its receipts.</strong> A count is never shown without who and since when.</td><td><code>corroboratingSources</code> + <code>firstSeenAt</code> on every corroborated verdict — falsifiable by design; the reader can check the named sources.</td></tr>
+    <tr><td>G5</td><td><strong>Single sources stay bare.</strong> No badge, no signal, no receipts.</td><td>Sourced only speaks when it has something corroborated to say. Silence protects credibility.</td></tr>
+    <tr><td>G6</td><td><strong>Signal rides the reliable clock.</strong> A matching error can shift a count but can never invent urgency.</td><td>“Breaking” is computed from the upstream publish time, never from Sourced’s own first-seen estimate.</td></tr>
+    <tr><td>G7</td><td><strong>Fail open, never break.</strong> Degrading to “no verdict” is always safe; crashing is not.</td><td>Every step is best-effort: dead storage, empty clusters, malformed input → claims pass through unlabeled. <code>assess</code> never throws.</td></tr>
+  </table></div>
+</section>
+
+<section id="adversarial">
+  <h2><span class="no">7</span>Adversarial analysis</h2>
+  <p>How would someone game a corroboration count — and why Sourced resists:</p>
+  <h3>Astroturf many outlets</h3>
+  <p>
+    Inflating a count requires genuinely <em>distinct origins</em>, not many
+    articles — G3 collapses syndication and copies to one. The cost of faking
+    corroboration is the cost of standing up many independent sources, which is
+    the real-world cost of the thing being true enough to report.
+  </p>
+  <h3>Keyword-stuff a headline to hijack an event</h3>
+  <p>
+    Sharing 3 tokens with a real event is easy; passing Jaccard ≥ 0.60 at the
+    same time requires the titles to genuinely be about the same thing. The
+    stuffed title fails gate 1 and stays what it is: a single-origin claim with
+    no signal. (This exact attack is a live test case —
+    <a href="https://sourced.network">watch it fail</a>.)
+  </p>
+  <h3>Rush a “breaking” label</h3>
+  <p>
+    The urgency clock is the upstream publish time (G6). A planted
+    first-sighting changes nothing; an old story newly corroborated reads
+    “developing”, never “breaking”.
+  </p>
+</section>
+
+<section id="domains">
+  <h2><span class="no">8</span>Beyond news</h2>
+  <p>
+    The unit Sourced operates on is <code>(claim, origin, timestamp)</code>
+    plus a pluggable way to group claims into events — not “a news article.”
+    Any domain with independent reports of discrete events fits: swap the
+    clustering and the storage, keep the counting and the guarantees untouched.
+  </p>
+  <div class="tablebox"><table>
+    <tr><th>Domain</th><th>A “claim” is…</th><th>An “origin” is…</th><th>The verdict answers</th></tr>
+    <tr><td>News</td><td>a headline</td><td>an outlet</td><td>How broadly is this reported?</td></tr>
+    <tr><td>Outage / incident</td><td>a failure report</td><td>a monitor / region</td><td>Real outage, or one flaky probe?</td></tr>
+    <tr><td>OSINT / verification</td><td>a field report</td><td>an account / feed</td><td>How many independent eyes confirm it?</td></tr>
+    <tr><td>Moderation</td><td>a “this is bad” flag</td><td>a distinct reporter</td><td>Genuinely mass-flagged, honestly counted?</td></tr>
+    <tr><td>Sensor fusion</td><td>a detection</td><td>a sensor</td><td>Do multiple sensors agree an event occurred?</td></tr>
+    <tr><td>Market / event feeds</td><td>an event print</td><td>a data vendor</td><td>Is this move corroborated across vendors?</td></tr>
+  </table></div>
+  <p class="muted small">
+    The outage row isn’t hypothetical — it ships as a runnable example in the
+    repository, tuned with <code>confirmedAt: 3</code> and a 10-minute breaking
+    window, using the identical engine.
+  </p>
+</section>
+
+<section id="api">
+  <h2><span class="no">9</span>Hosted API</h2>
+  <p>
+    A public, stateless instance of the engine runs at
+    <a href="https://sourced.run">sourced.run</a> — paste claims in the
+    playground or <code>POST /api/assess</code> directly. Full request/response
+    reference, limits, and examples in curl, JavaScript and Python live there.
+  </p>
+<pre><code>curl -s https://sourced.run/api/assess \
+  -H <span class="s">"content-type: application/json"</span> \
+  -d <span class="s">'{"claims":[{"id":"a","title":"…","origin":"reuters","publishedAt":"2026-07-10T21:00:00Z"}]}'</span></code></pre>
+</section>
+
+<section id="conformance">
+  <h2><span class="no">10</span>Conformance</h2>
+  <p>
+    The guarantees ship as an executable, adversarial test suite —
+    <code>@sourcedhq/conformance</code>. It targets the <em>function shape</em>,
+    not this implementation: point it at any engine that claims to count
+    sources and it reports, case by case, whether that engine is
+    Sourced-honest or just counting volume.
+  </p>
+<pre><code><span class="k">import</span> { runConformance } <span class="k">from</span> <span class="s">"@sourcedhq/conformance"</span>;
+
+<span class="k">const</span> report = <span class="k">await</span> runConformance(myAssessImplementation);
+<span class="c">// { passed: 14, failed: 0, results: [{ id, guarantee, pass, detail }, …] }</span></code></pre>
+  <p>
+    The reference engine runs the suite on every commit in CI, and you can run
+    it against the live deployment in your browser at
+    <a href="https://sourced.network">sourced.network</a> — it executes fresh
+    every time, no cached results.
+  </p>
+</section>
+
+<section id="log">
+  <h2><span class="no">11</span>Transparency log</h2>
+  <p>
+    <code>@sourcedhq/log</code> chains verdict batches into a tamper-evident
+    hash chain: each record commits to the previous record’s hash
+    (Certificate-Transparency style, SHA-256 over canonicalized JSON). Publish
+    the chain head anywhere public — a git commit, OpenTimestamps — and the
+    entire history up to that point becomes verifiable: rewriting <em>any</em>
+    past verdict breaks every hash after it.
+  </p>
+  <p>
+    This turns “we have issued honest verdicts since day one” from a marketing
+    line into a checkable claim. Record format, verification semantics and a
+    hosted verifier live at <a href="https://sourced.network">sourced.network</a>.
+  </p>
+</section>
+
+<section id="packages">
+  <h2><span class="no">12</span>Packages, status, license</h2>
+  <div class="tablebox"><table>
+    <tr><th>Package</th><th>Contents</th><th>Runtime deps</th></tr>
+    <tr><td>@sourcedhq/core</td><td>The primitive: <code>assess()</code>, types, <code>createMemoryStore()</code>.</td><td>none</td></tr>
+    <tr><td>@sourcedhq/conformance</td><td>G1–G7 as adversarial executable cases + runner for any implementation.</td><td>core</td></tr>
+    <tr><td>@sourcedhq/log</td><td>Hash-chained transparency log: append, verify, inclusion proofs, JSONL storage, anchor CLI.</td><td>none (node:crypto)</td></tr>
+  </table></div>
+  <p>
+    <strong>Status:</strong> v0.1.0. The specification on this page is stable —
+    the guarantees are the contract; API names may still sharpen before 1.0.
+    npm publication under <code>@sourcedhq</code> is imminent; until then the
+    hosted API at <a href="https://sourced.run">sourced.run</a> is the fastest
+    way to use the engine.
+  </p>
+  <p>
+    <strong>License:</strong> not yet granted — all rights reserved while the
+    licensing decision is made. The intended direction is an open core (spec,
+    reference implementation, conformance suite) with hosted history services
+    on top.
+  </p>
+  <p>
+    <strong>Production use:</strong>
+    <a href="https://tickwire.news">Tickwire</a> — the live news channel for
+    the screen you already leave on — is built on Sourced; every
+    “✓ N sources” badge in the app is a Sourced verdict with receipts.
+  </p>
+  <p class="small muted">Contact: <a href="mailto:hello@tickwire.news">hello@tickwire.news</a></p>
 </section>
 
 <footer>
