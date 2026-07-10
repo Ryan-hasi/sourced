@@ -1,0 +1,24 @@
+{
+  "name": "@sourced/conformance",
+  "version": "0.1.0",
+  "description": "The Sourced honesty guarantees (G1–G7) as an executable, adversarial conformance suite — point it at any corroboration engine.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p ."
+  },
+  "dependencies": {
+    "@sourced/core": "*"
+  },
+  "license": "SEE LICENSE IN ../../README.md"
+}
