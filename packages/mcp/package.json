@@ -12,7 +12,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE.md",
+    "README.md"
   ],
   "bin": {
     "sourced-mcp": "./dist/server.js"
@@ -21,9 +23,9 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@sourcedhq/core": "*",
-    "@sourcedhq/log": "*",
-    "@sourcedhq/conformance": "*"
+    "@sourcedhq/core": "^0.1.0",
+    "@sourcedhq/log": "^0.1.0",
+    "@sourcedhq/conformance": "^0.1.0"
   },
   "keywords": [
     "mcp",
@@ -33,5 +35,9 @@
     "grounding",
     "sources"
   ],
-  "license": "SEE LICENSE IN ../../README.md"
+  "license": "SEE LICENSE IN LICENSE.md",
+  "homepage": "https://sourced.ink",
+  "engines": {
+    "node": ">=18"
+  }
 }

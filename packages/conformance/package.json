@@ -12,13 +12,19 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE.md",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@sourcedhq/core": "*"
+    "@sourcedhq/core": "^0.1.0"
   },
-  "license": "SEE LICENSE IN ../../README.md"
+  "license": "SEE LICENSE IN LICENSE.md",
+  "homepage": "https://sourced.ink",
+  "engines": {
+    "node": ">=18"
+  }
 }

@@ -12,7 +12,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE.md",
+    "README.md"
   ],
   "bin": {
     "sourced-anchor": "./dist/cli.js"
@@ -20,5 +22,9 @@
   "scripts": {
     "build": "tsc -p ."
   },
-  "license": "SEE LICENSE IN ../../README.md"
+  "license": "SEE LICENSE IN LICENSE.md",
+  "homepage": "https://sourced.ink",
+  "engines": {
+    "node": ">=18"
+  }
 }
