@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sourced NETWORK — the proof surface</title>
-<meta name="description" content="Watch the honesty guarantees pass live, verify transparency chains, follow the anchored verdict history.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23e5484d'/%3E%3C/svg%3E">
+<title>Sourced NETWORK — proof: live conformance &amp; transparency log</title>
+<meta name="description" content="Run the G1–G7 adversarial suite against the live engine, verify transparency chains, and read the full log specification: record format, hash rule, inclusion proofs, anchoring.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23d4111e'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,57 +20,172 @@
   </nav>
 </header>
 
-<div class="hero" style="padding-bottom:32px">
+<div class="hero">
   <div class="kicker">sourced.network — the proof surface</div>
-  <h1>Don’t trust it.<br><em>Check it.</em></h1>
+  <h1>Don’t trust it. Check it.</h1>
   <p class="sub">
-    Sourced’s honesty is not a promise — it is an adversarial test suite you can
-    run right now, and a hash-chained verdict history you can verify yourself.
-    This page is where both live.
+    Sourced’s honesty is not a promise. It is (a) an adversarial test suite you
+    can execute against the live engine right now, and (b) a hash-chained
+    verdict history whose integrity you can verify yourself. Both live on this
+    page, with their full semantics documented below.
   </p>
 </div>
 
-<section style="border-top:0;padding-top:0">
-  <h2>The yardstick — run live</h2>
-  <p class="muted small" style="margin-bottom:14px">
-    Every case below ATTACKS the engine: coincidental merges, syndication
-    flooding, event hijacking, fake urgency, dead storage, garbage input.
-    Rerun it as often as you like — this executes against the live engine,
-    not a cached result.
+<nav class="toc" aria-label="Contents">
+  <a href="#suite">1 · The yardstick — run it live</a>
+  <a href="#attacks">2 · What the suite attacks</a>
+  <a href="#verify">3 · Verify a transparency chain</a>
+  <a href="#format">4 · Log specification</a>
+  <a href="#anchoring">5 · Anchoring in practice</a>
+  <a href="#apiref">6 · API reference</a>
+  <a href="#registry">7 · Anchor registry</a>
+</nav>
+
+<section id="suite">
+  <h2><span class="no">1</span>The yardstick — run it live</h2>
+  <p>
+    <code>@sourcedhq/conformance</code> encodes the honesty guarantees
+    (<a href="https://sourced.ink#guarantees">spec §6</a>) as executable,
+    adversarial cases. The button below runs the full suite <em>server-side
+    against the live engine, fresh on every click</em> — no cached results.
+    The same suite runs in CI on every commit; the same suite can be pointed
+    at <em>any</em> engine claiming to count sources.
   </p>
   <div class="row">
     <button class="btn" id="runsuite">RUN THE SUITE</button>
     <span class="muted small" id="suitestat"></span>
   </div>
-  <div id="suite" style="margin-top:18px"></div>
+  <div id="suiteout"></div>
 </section>
 
-<section>
-  <h2>Verify a transparency chain</h2>
-  <p class="muted small" style="margin-bottom:14px">
-    Sourced deployments chain every verdict batch (each record commits to the
-    previous one’s hash) and publish the head. Paste a chain — as JSONL, one
-    record per line — and this verifies every link. Rewriting ANY past verdict
-    breaks everything after it.
+<section id="attacks">
+  <h2><span class="no">2</span>What the suite attacks</h2>
+  <div class="tablebox"><table>
+    <tr><th>Attack</th><th>Guarantee</th><th>Expected behavior</th></tr>
+    <tr><td>coincidental overlap</td><td>G1</td><td>Two short titles sharing 2 tokens by chance (Jaccard 0.67) must NOT corroborate each other — the shared-token floor blocks the merge.</td></tr>
+    <tr><td>event hijacking</td><td>G1/§7</td><td>A keyword-stuffed title sharing 3 real tokens buried in noise fails the similarity gate and stays a bare single-origin claim.</td></tr>
+    <tr><td>syndication flood</td><td>G3</td><td>Ten copies from ONE origin → corroboration 1, unlabeled. Duplicate origins inside a provided cluster also collapse.</td></tr>
+    <tr><td>receipts integrity</td><td>G4</td><td>A corroborated verdict names the other origins — never its own — capped at the display limit; the count itself is never capped.</td></tr>
+    <tr><td>single-source decoration</td><td>G5</td><td>One origin → no signal, no receipts, no badge. Ever.</td></tr>
+    <tr><td>fake urgency</td><td>G6</td><td>An OLD story newly corroborated reads “developing”, never “breaking” — urgency rides the upstream publish clock only.</td></tr>
+    <tr><td>dead storage / garbage input</td><td>G7</td><td>A store that throws on load AND save, or unparseable claims: verdicts still come back (or <code>null</code>), the stream never breaks.</td></tr>
+    <tr><td>memory honesty</td><td>§4</td><td>first-seen timestamps stay stable across runs; corroboration accumulates through the store; expired events retire into the archive, not into deletion.</td></tr>
+  </table></div>
+  <p class="muted small">
+    Sanity cases run alongside the attacks (e.g. four genuinely identical
+    reports from distinct origins <em>must</em> reach “confirmed”) so the suite
+    cannot be passed by an engine that simply never merges anything.
+  </p>
+</section>
+
+<section id="verify">
+  <h2><span class="no">3</span>Verify a transparency chain</h2>
+  <p>
+    Paste a chain below — JSONL, one record per line, the exact format the
+    <code>sourced-anchor</code> CLI writes. The verifier recomputes every
+    record hash, checks every back-link and the sequence numbering, and
+    reports either the head hash or the first broken record.
   </p>
   <textarea id="chain" rows="7" spellcheck="false" placeholder='{"seq":0,"ts":1767225600000,"payloadHash":"…","prevHash":"","hash":"…"}&#10;{"seq":1,"ts":1767225601000,"payloadHash":"…","prevHash":"…","hash":"…"}'></textarea>
-  <div class="row" style="margin-top:14px">
-    <button class="btn" id="verify">VERIFY CHAIN</button>
+  <div class="row">
+    <button class="btn" id="verifybtn">VERIFY CHAIN</button>
     <span class="muted small" id="vstat"></span>
   </div>
-  <div id="vout" style="margin-top:16px"></div>
+  <div id="vout"></div>
 </section>
 
-<section>
-  <h2>Anchor registry</h2>
+<section id="format">
+  <h2><span class="no">4</span>Log specification</h2>
+  <p>
+    A Sourced transparency log is an append-only chain of records, one per
+    verdict batch. Its purpose: make the claim “this history was never
+    rewritten” checkable by anyone, using nothing but the records themselves
+    and one published head hash.
+  </p>
+  <h3>Record format</h3>
+  <div class="tablebox"><table>
+    <tr><th>Field</th><th>Type</th><th>Semantics</th></tr>
+    <tr><td>seq</td><td>number</td><td>0-based position in the chain. Must be contiguous — a gap is a verification failure.</td></tr>
+    <tr><td>ts</td><td>number (epoch ms)</td><td>When the record was appended.</td></tr>
+    <tr><td>payloadHash</td><td>string (hex)</td><td>SHA-256 of the <em>canonicalized</em> payload: JSON with all object keys sorted recursively, so the same payload always hashes identically regardless of construction order.</td></tr>
+    <tr><td>prevHash</td><td>string (hex)</td><td>The previous record’s <code>hash</code>; empty string for the genesis record. This is the link that makes rewriting detectable.</td></tr>
+    <tr><td>hash</td><td>string (hex)</td><td><code>SHA-256(seq + "|" + ts + "|" + payloadHash + "|" + prevHash)</code> — commits to the position, the time, the content, and the entire history before it.</td></tr>
+  </table></div>
+  <h3>Verification semantics</h3>
+  <ol>
+    <li>For every record <em>i</em>: recompute <code>hash</code> from its fields — mismatch means the record was altered.</li>
+    <li>Check <code>prevHash</code> equals record <em>i−1</em>’s <code>hash</code> (or "" at genesis) — a break means history was rewritten or spliced at this point.</li>
+    <li>Check <code>seq = i</code> — a gap means records were removed.</li>
+  </ol>
+  <p>
+    An attacker who rewrites record <em>k</em> and recomputes its hash still
+    fails: record <em>k+1</em> points at the <em>original</em> hash. To forge a
+    history they must rewrite every subsequent record — which changes the head
+    hash, which is the one value published where they cannot touch it.
+  </p>
+  <h3>Inclusion proofs</h3>
+  <p>
+    Given a verified chain and a payload, checking
+    <code>payloadHash(seq) = SHA-256(canonicalize(payload))</code> proves that
+    exact payload was committed at that position when the head was anchored —
+    e.g. “this verdict, with these receipts, existed unmodified on this date.”
+  </p>
+</section>
+
+<section id="anchoring">
+  <h2><span class="no">5</span>Anchoring in practice</h2>
+  <p>
+    The chain head is one 64-hex-character value. Publishing it anywhere you
+    cannot silently edit — a git commit, OpenTimestamps, even a dated post —
+    anchors the <em>entire</em> history up to that point. The reference tooling:
+  </p>
+<pre><code><span class="c"># append verdict batches to a chain file (JSONL), then:</span>
+npx sourced-anchor chain.jsonl --anchors anchors.log
+<span class="c"># → VERIFIED 1042 records</span>
+<span class="c"># → 2026-07-11T09:00:00.000Z seq=1041 head=ed2a7dba…c416e80</span>
+<span class="c"># commit anchors.log — the git history becomes the anchor trail</span></code></pre>
+  <ul class="small">
+    <li>Anchor frequency is a policy choice: per deploy, hourly, daily. Each anchor covers everything before it, so sparse anchoring still proves the past.</li>
+    <li>Verification needs no trust in the operator: chain + published head is sufficient.</li>
+    <li>What it does NOT prove: that verdicts were <em>correct</em> — only that they were <em>not rewritten afterwards</em>. Correctness is the conformance suite’s job (§1). The two together are the whole claim.</li>
+  </ul>
+</section>
+
+<section id="apiref">
+  <h2><span class="no">6</span>API reference</h2>
+  <h3>GET /api/conformance</h3>
+  <p class="small">
+    Runs the full suite server-side against the live engine.
+    Response: <code>{ ranAt, engine, passed, failed, results: [{ id, guarantee, title, pass, detail }] }</code>.
+    No parameters, no caching, CORS open.
+  </p>
+  <h3>POST /api/verify</h3>
+  <div class="tablebox"><table>
+    <tr><th>Field</th><th>Type</th><th>Semantics</th></tr>
+    <tr><td>chain <span class="opt">either</span></td><td>LogRecord[]</td><td>The chain as a JSON array…</td></tr>
+    <tr><td>jsonl <span class="opt">or</span></td><td>string</td><td>…or as raw JSONL text (one record per line).</td></tr>
+    <tr><td>payload <span class="opt">optional</span></td><td>any</td><td>With <code>seq</code>: also check an inclusion proof for this payload at that position.</td></tr>
+    <tr><td>seq <span class="opt">optional</span></td><td>number</td><td>Position for the inclusion check.</td></tr>
+  </table></div>
+  <p class="small">
+    Response, valid: <code>{ ok: true, length, head, payloadIncluded? }</code> ·
+    broken: <code>{ ok: false, badIndex, reason }</code> where reason is
+    <code>"hash mismatch"</code>, <code>"broken link"</code> or <code>"sequence gap"</code>.
+    Limits: 2 MB body, 100 000 records hosted (the CLI has no limit).
+  </p>
+</section>
+
+<section id="registry">
+  <h2><span class="no">7</span>Anchor registry</h2>
   <div class="card">
-    <p class="small"><span class="badge">GENESIS</span></p>
+    <span class="badge">GENESIS</span>
     <p class="small" style="margin-top:10px">
-      The production chain starts with the first Sourced deployment inside
-      <a href="https://tickwire.news">Tickwire</a>. From that moment, every
-      verdict batch is chained and the head is anchored publicly — and this
-      registry lists every anchor: <code>timestamp · seq · head</code>.
-      A history that cannot be rewritten, only extended.
+      The production chain begins with the first Sourced deployment inside
+      <a href="https://tickwire.news">Tickwire</a>: from that moment, every
+      verdict batch is chained and each anchor lands here as
+      <code>timestamp · seq · head</code> — a public history that can only be
+      extended, never rewritten. This registry is intentionally empty rather
+      than seeded with demo data: the first entry should mean something.
     </p>
   </div>
 </section>
@@ -86,20 +201,20 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
 
 $("runsuite").onclick = async () => {
-  const stat = $("suitestat"), box = $("suite");
+  const stat = $("suitestat"), box = $("suiteout");
   stat.textContent = "attacking the engine…"; box.innerHTML = "";
   try {
     const t0 = performance.now();
     const r = await fetch("/api/conformance");
     const data = await r.json();
-    stat.textContent = Math.round(performance.now() - t0) + " ms · " + data.passed + "/" + (data.passed + data.failed) + " passed";
+    stat.textContent = Math.round(performance.now() - t0) + " ms · " + data.passed + "/" + (data.passed + data.failed) + " passed · ran " + data.ranAt.replace("T", " ").slice(0, 19) + " UTC";
     const card = document.createElement("div");
     card.className = "card";
     data.results.forEach((c) => {
       const el = document.createElement("div");
       el.className = "v";
       el.innerHTML =
-        '<div class="t"><span class="badge ' + (c.pass ? "ok" : "fail") + '">' + (c.pass ? "PASS" : "FAIL") + "</span> " +
+        '<div class="t"><span class="badge ' + (c.pass ? "ok" : "fail") + '" style="margin-left:0">' + (c.pass ? "PASS" : "FAIL") + "</span> " +
         '<span class="badge">' + esc(c.guarantee) + "</span> " + esc(c.title) + "</div>" +
         '<div class="m">' + esc(c.detail) + "</div>";
       card.appendChild(el);
@@ -108,7 +223,7 @@ $("runsuite").onclick = async () => {
   } catch (e) { stat.textContent = "failed: " + e; }
 };
 
-$("verify").onclick = async () => {
+$("verifybtn").onclick = async () => {
   const stat = $("vstat"), box = $("vout");
   stat.textContent = "verifying…"; box.innerHTML = "";
   try {
@@ -123,10 +238,10 @@ $("verify").onclick = async () => {
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = data.ok
-      ? '<span class="badge ok">CHAIN VALID</span><div class="m" style="margin-top:10px">' +
+      ? '<span class="badge ok" style="margin-left:0">CHAIN VALID</span><div class="m" style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--dim)">' +
         data.length + " records · head <code>" + esc(data.head) + "</code><br>Publish or compare this head — it commits to the entire history above it.</div>"
-      : '<span class="badge fail">CHAIN BROKEN</span><div class="m" style="margin-top:10px">record ' +
-        data.badIndex + ": " + esc(data.reason) + " — everything from here on is untrustworthy.</div>";
+      : '<span class="badge fail" style="margin-left:0">CHAIN BROKEN</span><div class="m" style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--dim)">record ' +
+        data.badIndex + ": " + esc(data.reason) + " — everything from this record on is untrustworthy.</div>";
     box.appendChild(card);
   } catch (e) { stat.textContent = "failed: " + e; }
 };

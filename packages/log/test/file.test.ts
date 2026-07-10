@@ -2,12 +2,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { appendToFile, loadChain, verify } from "@sourced/log";
+import { appendToFile, loadChain, verify } from "@sourcedhq/log";
 
 const dir = mkdtempSync(join(tmpdir(), "sourced-log-"));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-describe("@sourced/log — file chain", () => {
+describe("@sourcedhq/log — file chain", () => {
   it("appends, reloads and verifies across processes boundaries", () => {
     const path = join(dir, "chain.jsonl");
     const T0 = Date.UTC(2026, 0, 1);

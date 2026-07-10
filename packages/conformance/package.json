@@ -1,5 +1,5 @@
 {
-  "name": "@sourced/conformance",
+  "name": "@sourcedhq/conformance",
   "version": "0.1.0",
   "description": "The Sourced honesty guarantees (G1–G7) as an executable, adversarial conformance suite — point it at any corroboration engine.",
   "type": "module",
@@ -18,7 +18,7 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@sourced/core": "*"
+    "@sourcedhq/core": "*"
   },
   "license": "SEE LICENSE IN ../../README.md"
 }

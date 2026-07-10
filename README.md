@@ -12,7 +12,7 @@ heuristic in journalism — *get a second source* — computed continuously over
 live stream, honestly. Sourced is that layer, as one small function.
 
 ```ts
-import { assess, createMemoryStore } from "@sourced/core";
+import { assess, createMemoryStore } from "@sourcedhq/core";
 
 const store = createMemoryStore(); // or your KV / SQLite / file
 
@@ -39,7 +39,7 @@ flags. Sourced only counts; how you group "same event" is pluggable.
 ## The honesty guarantees
 
 These are invariants, not preferences — and they ship as an executable,
-adversarial test suite (`@sourced/conformance`), not as promises:
+adversarial test suite (`@sourcedhq/conformance`), not as promises:
 
 | # | Guarantee |
 |---|---|
@@ -54,13 +54,13 @@ adversarial test suite (`@sourced/conformance`), not as promises:
 Run the yardstick against *any* engine claiming to count sources:
 
 ```ts
-import { runConformance } from "@sourced/conformance";
+import { runConformance } from "@sourcedhq/conformance";
 const report = await runConformance(myAssessImplementation);
 ```
 
 ## The transparency log
 
-`@sourced/log` chains every verdict batch into a tamper-evident hash chain
+`@sourcedhq/log` chains every verdict batch into a tamper-evident hash chain
 (Certificate-Transparency style). Anchor the chain head anywhere public and the
 whole history becomes verifiable: rewriting any past verdict breaks every hash
 after it. *"We have issued honest verdicts since day one"* stops being a
@@ -70,9 +70,9 @@ marketing line and becomes something you can check.
 
 | Package | What |
 |---|---|
-| `@sourced/core` | The primitive: `assess(claims, { clusters, store, archive, now, config })` → verdicts. Zero deps. |
-| `@sourced/conformance` | G1–G7 as adversarial executable cases + runner. The yardstick. |
-| `@sourced/log` | Hash-chained, anchorable transparency log for verdict history. |
+| `@sourcedhq/core` | The primitive: `assess(claims, { clusters, store, archive, now, config })` → verdicts. Zero deps. |
+| `@sourcedhq/conformance` | G1–G7 as adversarial executable cases + runner. The yardstick. |
+| `@sourcedhq/log` | Hash-chained, anchorable transparency log for verdict history. |
 
 ```bash
 npm install        # workspace setup

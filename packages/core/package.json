@@ -1,5 +1,5 @@
 {
-  "name": "@sourced/core",
+  "name": "@sourcedhq/core",
   "version": "0.1.0",
   "description": "The corroboration primitive: how many independent sources corroborate a claim, since when, with receipts. Never 'true' — always 'sourced'.",
   "type": "module",

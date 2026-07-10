@@ -7,9 +7,9 @@ export default defineConfig({
   resolve: {
     // Test against source — no build step needed during development.
     alias: {
-      "@sourced/core": p("./packages/core/src/index.ts"),
-      "@sourced/log": p("./packages/log/src/index.ts"),
-      "@sourced/conformance": p("./packages/conformance/src/index.ts"),
+      "@sourcedhq/core": p("./packages/core/src/index.ts"),
+      "@sourcedhq/log": p("./packages/log/src/index.ts"),
+      "@sourcedhq/conformance": p("./packages/conformance/src/index.ts"),
     },
   },
   test: {

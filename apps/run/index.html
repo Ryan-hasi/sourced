@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sourced RUN — try the corroboration primitive</title>
-<meta name="description" content="Paste claims, get verdicts. The Sourced primitive, live: independent-source counts with receipts. Never 'true'.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23e5484d'/%3E%3C/svg%3E">
+<title>Sourced RUN — playground &amp; API reference</title>
+<meta name="description" content="Run the Sourced corroboration engine live: playground plus full API reference — request/response schema, config keys, limits, errors, examples in curl, JavaScript and Python.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23d4111e'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,40 +20,175 @@
   </nav>
 </header>
 
-<div class="hero" style="padding-bottom:32px">
-  <div class="kicker">sourced.run — the playground</div>
-  <h1>Paste claims.<br>Get <em>verdicts.</em></h1>
+<div class="hero">
+  <div class="kicker">sourced.run — playground &amp; hosted API</div>
+  <h1>Run the engine</h1>
   <p class="sub">
-    The live primitive. Each claim is <code>{ id, title, origin, publishedAt }</code> —
-    same titles from different origins corroborate each other; copies from the
-    same origin collapse to one (G3). Single sources stay bare (G5).
+    A public, stateless instance of <code>@sourcedhq/core</code>. Paste claims
+    below and read the verdicts, or call <code>POST /api/assess</code> from
+    your own code — full reference further down.
   </p>
+  <div class="meta">
+    <span>endpoint <strong>POST https://sourced.run/api/assess</strong></span>
+    <span>auth <strong>none</strong></span>
+    <span>CORS <strong>open</strong></span>
+    <span>limits <strong>200 claims · 200 kB / call</strong></span>
+  </div>
 </div>
 
-<section style="border-top:0;padding-top:0">
+<nav class="toc" aria-label="Contents">
+  <a href="#playground">1 · Playground</a>
+  <a href="#semantics">2 · What a call computes</a>
+  <a href="#request">3 · Request schema</a>
+  <a href="#response">4 · Response schema</a>
+  <a href="#config">5 · Config keys</a>
+  <a href="#errors">6 · Errors &amp; limits</a>
+  <a href="#examples">7 · Examples (curl · JS · Python)</a>
+</nav>
+
+<section id="playground">
+  <h2><span class="no">1</span>Playground</h2>
+  <p class="muted small" style="margin-bottom:10px">
+    The prefilled example demonstrates the guarantees: four independent origins
+    report the same event (count climbs to <span class="badge confirmed">CONFIRMED</span>),
+    a repeat from <code>reuters</code> adds nothing (G3), and the single-origin
+    story stays bare (G5). Edit freely — it is the live engine.
+  </p>
   <textarea id="in" rows="14" spellcheck="false"></textarea>
-  <div class="row" style="margin-top:14px">
+  <div class="row">
     <button class="btn" id="go">RUN ASSESS</button>
     <button class="btn ghost" id="reset">RESET EXAMPLE</button>
     <span class="muted small" id="stat"></span>
   </div>
-  <div id="out" style="margin-top:22px"></div>
+  <div id="out"></div>
 </section>
 
-<section>
-  <h2>Use it as an API</h2>
-<pre>curl -s https://sourced.run/api/assess \
-  -H "content-type: application/json" \
-  -d '{"claims":[
-    {"id":"a","title":"Major dam breach reported upstream","origin":"reuters","publishedAt":"2026-07-10T21:00:00Z"},
-    {"id":"b","title":"Major dam breach reported upstream","origin":"bbc","publishedAt":"2026-07-10T21:04:00Z"}
-  ]}'</pre>
-  <p class="muted small">
-    Stateless: corroboration is computed within the batch you send.
-    200 claims / 200 kB per call. Optional <code>config</code> can TIGHTEN or relax
-    thresholds — the defaults are the honest contract.
-    Spec &amp; guarantees: <a href="https://sourced.ink">sourced.ink</a>.
+<section id="semantics">
+  <h2><span class="no">2</span>What a call computes</h2>
+  <p>
+    Each call is <strong>batch-scoped and stateless</strong>: corroboration is
+    computed across the claims you send in that request (titles that describe
+    the same event merge via the dual gate; origins are counted distinct).
+    Nothing is stored between calls — <code>firstSeenAt</code> equals the
+    request time, and no data you send is retained.
   </p>
+  <p>
+    That makes this endpoint ideal for evaluating the engine and for
+    “given these N reports, what corroborates what?” batch questions. If you
+    need <em>persistent</em> event memory — first-seen timelines that survive
+    across runs — run <code>@sourcedhq/core</code> yourself with a store
+    (one <code>load()</code>/<code>save()</code> pair, any KV; see the
+    <a href="https://sourced.ink#model">spec §3</a>). A hosted persistent tier
+    is on the roadmap.
+  </p>
+  <div class="note">
+    Grouping hint: the engine merges events by title similarity
+    (<a href="https://sourced.ink#algorithm">spec §4</a>). If you already know
+    which claims describe the same event — from your own clustering — pass
+    <code>clusters</code> and skip the guesswork; Sourced then only counts.
+  </div>
+</section>
+
+<section id="request">
+  <h2><span class="no">3</span>Request schema</h2>
+  <p><code>POST /api/assess</code> with <code>content-type: application/json</code>:</p>
+  <div class="tablebox"><table>
+    <tr><th>Field</th><th>Type</th><th>Semantics</th></tr>
+    <tr><td>claims <span class="req">required</span></td><td>Claim[] (1–200)</td><td>The batch to assess. Order is preserved in the response.</td></tr>
+    <tr><td>claims[].id <span class="req">required</span></td><td>string</td><td>Stable report id; used to look up <code>clusters</code> entries.</td></tr>
+    <tr><td>claims[].title <span class="req">required</span></td><td>string</td><td>The claim in words — event identity derives from it.</td></tr>
+    <tr><td>claims[].origin <span class="req">required</span></td><td>string</td><td>The source; the unit of independence. Normalize consistently.</td></tr>
+    <tr><td>claims[].publishedAt <span class="req">required</span></td><td>string, ISO 8601</td><td>Upstream publish time; drives the “breaking” window. Unparseable → that claim can’t be “breaking”, everything else works.</td></tr>
+    <tr><td>clusters <span class="opt">optional</span></td><td>{ [claimId]: string[] }</td><td>Your own event grouping: claim id → all origins reporting that event in this batch (≤ 100 origins per entry). Duplicates collapse (G3).</td></tr>
+    <tr><td>config <span class="opt">optional</span></td><td>object</td><td>Threshold overrides — whitelisted numeric keys only, clamped to sane ranges (§5).</td></tr>
+  </table></div>
+</section>
+
+<section id="response">
+  <h2><span class="no">4</span>Response schema</h2>
+  <p><code>200 OK</code>, JSON:</p>
+  <div class="tablebox"><table>
+    <tr><th>Field</th><th>Type</th><th>Semantics</th></tr>
+    <tr><td>verdicts</td><td>(Verdict | null)[]</td><td>One entry per input claim, <strong>in input order</strong>. <code>null</code> = unassessable (e.g. title had no meaning-bearing tokens) — the claim passes through unlabeled, per G7.</td></tr>
+    <tr><td>verdicts[].corroboration</td><td>number ≥ 1</td><td>Distinct independent origins for the claim’s event within this batch.</td></tr>
+    <tr><td>verdicts[].corroboratingSources</td><td>string[]</td><td>Receipts — the <em>other</em> origins (never the claim’s own), max 6 by default.</td></tr>
+    <tr><td>verdicts[].firstSeenAt</td><td>string, ISO 8601</td><td>Stateless endpoint → the request time. (Persistent first-seen requires running the engine with a store.)</td></tr>
+    <tr><td>verdicts[].signal</td><td>"confirmed" · "breaking" · "developing" · null</td><td>See <a href="https://sourced.ink#algorithm">spec §4.4</a>. There is deliberately no “true” and no veracity score (G2).</td></tr>
+    <tr><td>engine</td><td>string</td><td>Engine identifier.</td></tr>
+    <tr><td>config</td><td>object, only if sent</td><td>Echo of the clamped overrides actually applied.</td></tr>
+  </table></div>
+</section>
+
+<section id="config">
+  <h2><span class="no">5</span>Config keys</h2>
+  <p class="muted small" style="margin-bottom:6px">
+    Numeric keys only; anything else is ignored. Values are clamped to the
+    ranges below. The defaults are the honesty contract — tighten freely,
+    loosen knowingly (<a href="https://sourced.ink#config">spec §5</a>).
+  </p>
+  <div class="tablebox"><table>
+    <tr><th>Key</th><th>Default</th><th>Clamp</th><th>Meaning</th></tr>
+    <tr><td>mergeSimilarity</td><td>0.60</td><td>0.3 – 1</td><td>Jaccard floor for merging two events (gate 1).</td></tr>
+    <tr><td>minSharedTokens</td><td>3</td><td>1 – 10</td><td>Shared-token floor for merging (gate 2).</td></tr>
+    <tr><td>confirmedAt</td><td>4</td><td>2 – 20</td><td>Origins needed for “confirmed”.</td></tr>
+    <tr><td>corroboratedAt</td><td>2</td><td>2 – 20</td><td>Origins needed for “developing”/“breaking”.</td></tr>
+    <tr><td>breakingWindowMs</td><td>1 800 000</td><td>1 min – 24 h</td><td>Publish-age window for “breaking”.</td></tr>
+    <tr><td>receiptsCap</td><td>6</td><td>1 – 20</td><td>Max receipts per verdict (display cap; the count is never capped).</td></tr>
+    <tr><td>keyTokens</td><td>8</td><td>3 – 16</td><td>Tokens in the deterministic event key.</td></tr>
+  </table></div>
+</section>
+
+<section id="errors">
+  <h2><span class="no">6</span>Errors &amp; limits</h2>
+  <div class="tablebox"><table>
+    <tr><th>Status</th><th>Body</th><th>When</th></tr>
+    <tr><td>400</td><td>{ "error": "claims must be a non-empty array" }</td><td>Missing/empty <code>claims</code>.</td></tr>
+    <tr><td>400</td><td>{ "error": "max 200 claims per call" }</td><td>Batch too large — split it.</td></tr>
+    <tr><td>400</td><td>{ "error": "payload too large (200 kB max)" } / { "error": "invalid JSON" }</td><td>Body unreadable.</td></tr>
+    <tr><td>405</td><td>{ "error": "POST a batch of claims" }</td><td>Any method other than GET (usage doc) / POST / OPTIONS.</td></tr>
+  </table></div>
+  <ul class="small">
+    <li>No authentication, CORS fully open — call it straight from a browser.</li>
+    <li>Malformed <em>individual</em> claims never fail the request: they come back as <code>null</code> verdicts (G7). Only a malformed <em>envelope</em> is a 400.</li>
+    <li><code>GET /api/assess</code> returns a machine-readable usage summary.</li>
+    <li>Fair use: this is a free evaluation endpoint, not an SLA. High-volume or persistent workloads: run the engine yourself, or contact us.</li>
+  </ul>
+</section>
+
+<section id="examples">
+  <h2><span class="no">7</span>Examples</h2>
+  <h3>curl</h3>
+<pre><code>curl -s https://sourced.run/api/assess \
+  -H <span class="s">"content-type: application/json"</span> \
+  -d <span class="s">'{
+    "claims": [
+      {"id":"a","title":"Major dam breach reported upstream","origin":"reuters","publishedAt":"2026-07-10T21:00:00Z"},
+      {"id":"b","title":"Major dam breach reported upstream","origin":"bbc","publishedAt":"2026-07-10T21:04:00Z"}
+    ]
+  }'</span></code></pre>
+  <h3>JavaScript</h3>
+<pre><code><span class="k">const</span> res = <span class="k">await</span> fetch(<span class="s">"https://sourced.run/api/assess"</span>, {
+  method: <span class="s">"POST"</span>,
+  headers: { <span class="s">"content-type"</span>: <span class="s">"application/json"</span> },
+  body: JSON.stringify({ claims }),
+});
+<span class="k">const</span> { verdicts } = <span class="k">await</span> res.json();
+<span class="c">// verdicts[i] belongs to claims[i]</span></code></pre>
+  <h3>Python</h3>
+<pre><code><span class="k">import</span> requests
+
+r = requests.post(
+    <span class="s">"https://sourced.run/api/assess"</span>,
+    json={<span class="s">"claims"</span>: [
+        {<span class="s">"id"</span>: <span class="s">"a"</span>, <span class="s">"title"</span>: <span class="s">"Major dam breach reported upstream"</span>,
+         <span class="s">"origin"</span>: <span class="s">"reuters"</span>, <span class="s">"publishedAt"</span>: <span class="s">"2026-07-10T21:00:00Z"</span>},
+        {<span class="s">"id"</span>: <span class="s">"b"</span>, <span class="s">"title"</span>: <span class="s">"Major dam breach reported upstream"</span>,
+         <span class="s">"origin"</span>: <span class="s">"bbc"</span>, <span class="s">"publishedAt"</span>: <span class="s">"2026-07-10T21:04:00Z"</span>},
+    ]},
+    timeout=10,
+)
+verdicts = r.json()[<span class="s">"verdicts"</span>]  <span class="c"># verdicts[i] belongs to claims[i]</span>
+<span class="c"># verdicts[1] -> {'corroboration': 2, 'corroboratingSources': ['reuters'], 'signal': 'breaking', ...}</span></code></pre>
 </section>
 
 <footer>
@@ -96,11 +231,11 @@ $("go").onclick = async () => {
     const claims = body.claims || [];
     const box = document.createElement("div");
     box.className = "card";
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
     data.verdicts.forEach((v, i) => {
       const c = claims[i] || {};
       const el = document.createElement("div");
       el.className = "v";
-      const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
       if (v === null) {
         el.innerHTML = '<div class="t">' + esc(c.title) + ' <span class="badge">UNASSESSABLE</span></div>' +
           '<div class="m">' + esc(c.origin) + ' — passes through unlabeled (G7)</div>';
@@ -109,8 +244,7 @@ $("go").onclick = async () => {
         const rec = v.corroboratingSources.length ? " · receipts: " + v.corroboratingSources.map(esc).join(", ") : "";
         el.innerHTML =
           '<div class="t">' + esc(c.title) + " " + badge + "</div>" +
-          '<div class="m">' + esc(c.origin) + " → <strong>" + v.corroboration + " source" + (v.corroboration === 1 ? "" : "s") + "</strong>" + rec +
-          " · first seen " + esc(v.firstSeenAt.replace("T", " ").slice(0, 16)) + "</div>";
+          '<div class="m">' + esc(c.origin) + " → <strong>" + v.corroboration + " source" + (v.corroboration === 1 ? "" : "s") + "</strong>" + rec + "</div>";
       }
       box.appendChild(el);
     });
@@ -118,7 +252,7 @@ $("go").onclick = async () => {
     const note = document.createElement("p");
     note.className = "muted small";
     note.style.marginTop = "12px";
-    note.textContent = "Note the honesty: reuters appearing twice adds nothing (G3), the single-origin story got no badge (G5), and nothing here says “true” (G2).";
+    note.textContent = "Note the honesty: reuters appearing twice added nothing (G3), the single-origin story got no badge (G5), and nothing here says “true” (G2).";
     out.appendChild(note);
   } catch (e) { stat.textContent = "request failed: " + e; }
 };

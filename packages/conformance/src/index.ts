@@ -1,5 +1,5 @@
 /**
- * @sourced/conformance — the yardstick.
+ * @sourcedhq/conformance — the yardstick.
  *
  * The honesty guarantees G1–G7 as an executable, adversarial test suite.
  * It targets the `AssessFn` SHAPE, not our implementation — point it at any
@@ -13,7 +13,7 @@ import {
   createMemoryStore,
   type AssessFn,
   type Claim,
-} from "@sourced/core";
+} from "@sourcedhq/core";
 
 export type CaseResult = { id: string; guarantee: string; pass: boolean; detail: string };
 export type ConformanceCase = {

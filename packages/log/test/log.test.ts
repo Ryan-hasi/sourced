@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { append, canonicalize, head, verify, verifyPayloadAt, type LogRecord } from "@sourced/log";
+import { append, canonicalize, head, verify, verifyPayloadAt, type LogRecord } from "@sourcedhq/log";
 
 const T0 = Date.UTC(2026, 0, 1);
 
@@ -9,7 +9,7 @@ function buildChain(payloads: unknown[]): LogRecord[] {
   return chain;
 }
 
-describe("@sourced/log — transparency chain", () => {
+describe("@sourcedhq/log — transparency chain", () => {
   it("builds and verifies a clean chain", () => {
     const chain = buildChain([{ batch: 1 }, { batch: 2 }, { batch: 3 }]);
     const res = verify(chain);
