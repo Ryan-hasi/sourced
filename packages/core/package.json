@@ -12,7 +12,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE.md",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p ."
@@ -25,5 +27,9 @@
     "trust",
     "provenance"
   ],
-  "license": "SEE LICENSE IN ../../README.md"
+  "license": "SEE LICENSE IN LICENSE.md",
+  "homepage": "https://sourced.ink",
+  "engines": {
+    "node": ">=18"
+  }
 }
