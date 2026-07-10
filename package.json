@@ -9,7 +9,11 @@
   "scripts": {
     "test": "vitest run",
     "build": "npm run build --workspaces --if-present",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "sync:sites": "npm run build && node scripts/sync-sites.mjs",
+    "dev:ink": "node scripts/dev-server.mjs ink 4180",
+    "dev:run": "node scripts/dev-server.mjs run 4181",
+    "dev:network": "node scripts/dev-server.mjs network 4182"
   },
   "devDependencies": {
     "typescript": "^5.8.0",
