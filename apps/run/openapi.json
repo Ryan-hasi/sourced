@@ -1,0 +1,160 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Sourced — hosted corroboration API",
+    "version": "0.1.1",
+    "description": "Corroboration verdicts for claims: how many DISTINCT INDEPENDENT origins report each claim's event, since when, with receipts. Honest by design: undercounts rather than overcounts, syndicated copies collapse to one origin, single-origin claims stay unlabeled, and it never says 'true'. Stateless: corroboration is computed within the batch you send. Spec: https://sourced.ink · Proof: https://sourced.network",
+    "contact": { "email": "hello@tickwire.news", "url": "https://sourced.ink" },
+    "license": { "name": "MIT (engine)", "url": "https://github.com/Ryan-hasi/sourced/blob/main/LICENSE" }
+  },
+  "servers": [{ "url": "https://sourced.run" }],
+  "paths": {
+    "/api/assess": {
+      "get": {
+        "summary": "Machine-readable usage summary",
+        "operationId": "assessUsage",
+        "responses": { "200": { "description": "Usage document (JSON)." } }
+      },
+      "post": {
+        "summary": "Corroboration verdicts for a batch of claims",
+        "operationId": "assess",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["claims"],
+                "properties": {
+                  "claims": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 200,
+                    "items": { "$ref": "#/components/schemas/Claim" }
+                  },
+                  "clusters": {
+                    "type": "object",
+                    "description": "Optional pre-grouping: claim id -> origins reporting that same event in this batch (max 100 origins per entry). Duplicates collapse.",
+                    "additionalProperties": { "type": "array", "items": { "type": "string" } }
+                  },
+                  "config": { "$ref": "#/components/schemas/Config" }
+                }
+              },
+              "example": {
+                "claims": [
+                  { "id": "a", "title": "Major dam breach reported upstream", "origin": "reuters", "publishedAt": "2026-07-10T21:00:00Z" },
+                  { "id": "b", "title": "Major dam breach reported upstream", "origin": "bbc", "publishedAt": "2026-07-10T21:04:00Z" }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "One verdict per input claim, in input order. null = unassessable claim (passes through unlabeled — never an error).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "verdicts": {
+                      "type": "array",
+                      "items": { "oneOf": [{ "$ref": "#/components/schemas/Verdict" }, { "type": "null" }] }
+                    },
+                    "engine": { "type": "string" },
+                    "honest": { "type": "string" },
+                    "config": { "$ref": "#/components/schemas/Config" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "405": { "description": "Method not allowed." }
+        }
+      }
+    },
+    "/api/verify": {
+      "post": {
+        "summary": "Verify a Sourced transparency chain",
+        "operationId": "verifyChain",
+        "description": "Recomputes every record hash, back-link and sequence number. For human verification prefer the in-browser receipts at https://sourced.network — this endpoint is for programmatic use.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "chain": { "type": "array", "items": { "$ref": "#/components/schemas/LogRecord" } },
+                  "jsonl": { "type": "string", "description": "Alternative: raw JSONL, one record per line." },
+                  "payload": { "description": "With seq: check an inclusion proof for this payload." },
+                  "seq": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Valid: { ok: true, length, head, payloadIncluded? } · Broken: { ok: false, badIndex, reason: 'hash mismatch' | 'broken link' | 'sequence gap' }."
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Claim": {
+        "type": "object",
+        "required": ["id", "title", "origin", "publishedAt"],
+        "properties": {
+          "id": { "type": "string", "description": "Stable report id; used to look up clusters entries." },
+          "title": { "type": "string", "description": "The claim in words — event identity derives from it." },
+          "origin": { "type": "string", "description": "The source; the unit of independence. Normalize consistently (always 'reuters', never sometimes 'Reuters UK')." },
+          "publishedAt": { "type": "string", "format": "date-time", "description": "Upstream publish time; drives the 'breaking' window. Unparseable disables 'breaking' for this claim only." }
+        }
+      },
+      "Verdict": {
+        "type": "object",
+        "properties": {
+          "corroboration": { "type": "integer", "minimum": 1, "description": "Distinct independent origins for this claim's event within the batch." },
+          "corroboratingSources": { "type": "array", "items": { "type": "string" }, "description": "Receipts: the OTHER origins (never the claim's own). Max 6 by default." },
+          "firstSeenAt": { "type": "string", "format": "date-time", "description": "Stateless endpoint: the request time. Persistent first-seen requires running the engine with a store." },
+          "signal": { "enum": ["confirmed", "breaking", "developing", null], "description": "Deliberately no 'true' and no veracity score." }
+        }
+      },
+      "Config": {
+        "type": "object",
+        "description": "Numeric threshold overrides, clamped server-side. Defaults are the honesty contract — tighten freely, loosen knowingly.",
+        "properties": {
+          "mergeSimilarity": { "type": "number", "default": 0.6, "minimum": 0.3, "maximum": 1 },
+          "minSharedTokens": { "type": "number", "default": 3, "minimum": 1, "maximum": 10 },
+          "confirmedAt": { "type": "number", "default": 4, "minimum": 2, "maximum": 20 },
+          "corroboratedAt": { "type": "number", "default": 2, "minimum": 2, "maximum": 20 },
+          "breakingWindowMs": { "type": "number", "default": 1800000, "minimum": 60000, "maximum": 86400000 },
+          "receiptsCap": { "type": "number", "default": 6, "minimum": 1, "maximum": 20 },
+          "keyTokens": { "type": "number", "default": 8, "minimum": 3, "maximum": 16 }
+        }
+      },
+      "LogRecord": {
+        "type": "object",
+        "required": ["seq", "ts", "payloadHash", "prevHash", "hash"],
+        "properties": {
+          "seq": { "type": "integer", "description": "0-based, contiguous." },
+          "ts": { "type": "integer", "description": "Epoch ms when appended." },
+          "payloadHash": { "type": "string", "description": "SHA-256 hex of the canonicalized payload (keys sorted recursively)." },
+          "prevHash": { "type": "string", "description": "Previous record's hash; empty string at genesis." },
+          "hash": { "type": "string", "description": "SHA-256 hex over seq|ts|payloadHash|prevHash." }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Malformed envelope. Malformed INDIVIDUAL claims never fail a request — they return null verdicts.",
+        "content": { "application/json": { "schema": { "type": "object", "properties": { "error": { "type": "string" } } } } }
+      }
+    }
+  }
+}

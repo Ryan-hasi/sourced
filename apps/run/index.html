@@ -42,6 +42,7 @@
     <span>auth <strong>none</strong></span>
     <span>CORS <strong>open</strong></span>
     <span>limits <strong>200 claims · 200 kB / call</strong></span>
+    <span>contract <strong><a href="/openapi.json">openapi.json</a></strong></span>
   </div>
 </div>
 
@@ -160,7 +161,8 @@
   <ul class="small">
     <li>No authentication, CORS fully open — call it straight from a browser.</li>
     <li>Malformed <em>individual</em> claims never fail the request: they come back as <code>null</code> verdicts (G7). Only a malformed <em>envelope</em> is a 400.</li>
-    <li><code>GET /api/assess</code> returns a machine-readable usage summary.</li>
+    <li><code>GET /api/assess</code> returns a machine-readable usage summary; the full contract is <a href="/openapi.json">OpenAPI 3.1</a>.</li>
+    <li><code>POST /api/verify</code> is also served on this host — verify transparency chains programmatically (schema in the OpenAPI file; human verification with receipts lives at <a href="https://sourced.network">sourced.network</a>).</li>
     <li>Fair use: this is a free evaluation endpoint, not an SLA. High-volume or persistent workloads: run the engine yourself, or contact us.</li>
   </ul>
 </section>

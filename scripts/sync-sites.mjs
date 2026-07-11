@@ -33,6 +33,7 @@ write("apps/ink/api/_core.mjs", core);
 // verify/canonicalize only — drop the node:fs-backed file helpers.
 const log = banner + read("packages/log/dist/index.js").replace(/^export \{[^}]*\} from "\.\/file\.js";\r?\n/m, "");
 write("apps/network/api/_log.mjs", log);
+write("apps/run/api/_log.mjs", log);
 
 const conformance = banner + read("packages/conformance/dist/index.js").replaceAll('"@sourcedhq/core"', '"./_core.mjs"');
 write("apps/network/api/_conformance.mjs", conformance);
