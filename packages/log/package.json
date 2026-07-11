@@ -22,7 +22,7 @@
   "scripts": {
     "build": "tsc -p ."
   },
-  "license": "SEE LICENSE IN LICENSE.md",
+  "license": "MIT",
   "homepage": "https://sourced.ink",
   "engines": {
     "node": ">=18"
