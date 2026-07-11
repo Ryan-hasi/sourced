@@ -33,15 +33,17 @@
   <div class="kicker">sourced.run — playground &amp; hosted API</div>
   <h1>Run the engine</h1>
   <p class="sub">
-    A public, stateless instance of <code>@sourcedhq/core</code>. Paste claims
-    below and read the verdicts, or call <code>POST /api/assess</code> from
-    your own code — full reference further down.
+    A public instance of <code>@sourcedhq/core</code>. Paste claims
+    below and read the verdicts, or call <code>POST /api/v1/assess</code> from
+    your own code — full reference further down. Anonymous calls are
+    batch-scoped; an API key adds persistent memory and an own
+    transparency chain.
   </p>
   <div class="meta">
-    <span>endpoint <strong>POST https://sourced.run/api/assess</strong></span>
-    <span>auth <strong>none</strong></span>
+    <span>endpoint <strong>POST https://sourced.run/api/v1/assess</strong></span>
+    <span>auth <strong>optional</strong></span>
     <span>CORS <strong>open</strong></span>
-    <span>limits <strong>200 claims · 200 kB / call</strong></span>
+    <span>limits <strong>200 claims · 200 kB · 60/min anon</strong></span>
     <span>contract <strong><a href="/openapi.json">openapi.json</a></strong></span>
   </div>
 </div>
@@ -55,6 +57,8 @@
   <a href="#errors">6 · Errors &amp; limits</a>
   <a href="#examples">7 · Examples (curl · JS · Python)</a>
   <a href="#agents">8 · For AI agents (MCP)</a>
+  <a href="#keys">9 · API keys — persistent memory</a>
+  <a href="#chain">10 · Chain-as-a-service</a>
 </nav>
 
 <section id="playground">
@@ -77,20 +81,21 @@
 <section id="semantics">
   <h2><span class="no">2</span>What a call computes</h2>
   <p>
-    Each call is <strong>batch-scoped and stateless</strong>: corroboration is
-    computed across the claims you send in that request (titles that describe
-    the same event merge via the dual gate; origins are counted distinct).
-    Nothing is stored between calls — <code>firstSeenAt</code> equals the
-    request time, and no data you send is retained.
+    An anonymous call is <strong>batch-scoped and stateless</strong>:
+    corroboration is computed across the claims you send in that request
+    (titles that describe the same event merge via the dual gate; origins are
+    counted distinct). Nothing is stored between calls —
+    <code>firstSeenAt</code> equals the request time, and no data you send is
+    retained.
   </p>
   <p>
-    That makes this endpoint ideal for evaluating the engine and for
+    That makes the anonymous tier ideal for evaluating the engine and for
     “given these N reports, what corroborates what?” batch questions. If you
     need <em>persistent</em> event memory — first-seen timelines that survive
-    across runs — run <code>@sourcedhq/core</code> yourself with a store
+    across requests — send an <a href="#keys">API key (§9)</a>, or run
+    <code>@sourcedhq/core</code> yourself with a store
     (one <code>load()</code>/<code>save()</code> pair, any KV; see the
-    <a href="https://sourced.ink#model">spec §3</a>). A hosted persistent tier
-    is on the roadmap.
+    <a href="https://sourced.ink#model">spec §3</a>).
   </p>
   <div class="note">
     Grouping hint: the engine merges events by title similarity
@@ -102,7 +107,7 @@
 
 <section id="request">
   <h2><span class="no">3</span>Request schema</h2>
-  <p><code>POST /api/assess</code> with <code>content-type: application/json</code>:</p>
+  <p><code>POST /api/v1/assess</code> with <code>content-type: application/json</code> (optional <code>Authorization: Bearer sk_src_…</code>):</p>
   <div class="tablebox"><table>
     <tr><th>Field</th><th>Type</th><th>Semantics</th></tr>
     <tr><td>claims <span class="req">required</span></td><td>Claim[] (1–200)</td><td>The batch to assess. Order is preserved in the response.</td></tr>
@@ -156,14 +161,17 @@
     <tr><td>400</td><td>{ "error": "claims must be a non-empty array" }</td><td>Missing/empty <code>claims</code>.</td></tr>
     <tr><td>400</td><td>{ "error": "max 200 claims per call" }</td><td>Batch too large — split it.</td></tr>
     <tr><td>400</td><td>{ "error": "payload too large (200 kB max)" } / { "error": "invalid JSON" }</td><td>Body unreadable.</td></tr>
+    <tr><td>401</td><td>{ "error": "unknown or revoked key" }</td><td>A key was <em>sent</em> but is malformed/unknown. Requests without a key are never 401 — anonymous is a supported tier.</td></tr>
     <tr><td>405</td><td>{ "error": "POST a batch of claims" }</td><td>Any method other than GET (usage doc) / POST / OPTIONS.</td></tr>
+    <tr><td>429</td><td>{ "error": "rate limit: 60 requests/minute (anon tier)" }</td><td>Per-minute budget exhausted. Headers: <code>X-RateLimit-Limit</code>, <code>X-RateLimit-Remaining</code>, <code>Retry-After</code>.</td></tr>
   </table></div>
   <ul class="small">
-    <li>No authentication, CORS fully open — call it straight from a browser.</li>
+    <li>No authentication required, CORS fully open — call it straight from a browser. Anonymous: <strong>60 requests/minute</strong> per IP. Keyed: <strong>600/minute</strong>.</li>
+    <li><code>/api/v1/…</code> paths are <strong>frozen — v1 never breaks</strong>. (<code>/api/assess</code> and <code>/api/verify</code> remain as aliases.) Every response carries <code>X-Sourced-Api</code> and <code>X-Sourced-Engine</code>.</li>
     <li>Malformed <em>individual</em> claims never fail the request: they come back as <code>null</code> verdicts (G7). Only a malformed <em>envelope</em> is a 400.</li>
-    <li><code>GET /api/assess</code> returns a machine-readable usage summary; the full contract is <a href="/openapi.json">OpenAPI 3.1</a>.</li>
-    <li><code>POST /api/verify</code> is also served on this host — verify transparency chains programmatically (schema in the OpenAPI file; human verification with receipts lives at <a href="https://sourced.network">sourced.network</a>).</li>
-    <li>Fair use: this is a free evaluation endpoint, not an SLA. High-volume or persistent workloads: run the engine yourself, or contact us.</li>
+    <li><code>GET /api/v1/assess</code> returns a machine-readable usage summary; the full contract is <a href="/openapi.json">OpenAPI 3.1</a>.</li>
+    <li><code>POST /api/v1/verify</code> is also served on this host — verify transparency chains programmatically (schema in the OpenAPI file; human verification with receipts lives at <a href="https://sourced.network">sourced.network</a>).</li>
+    <li>Fair use: the anonymous tier is a free evaluation endpoint, not an SLA. High-volume or persistent workloads: an <a href="#keys">API key</a>, or run the engine yourself.</li>
   </ul>
 </section>
 
@@ -175,7 +183,7 @@
     <button data-pane="ex-py">PYTHON</button>
   </div>
   <div class="tabpanes" id="expanes">
-<pre class="on" id="ex-curl"><code>curl -s https://sourced.run/api/assess \
+<pre class="on" id="ex-curl"><code>curl -s https://sourced.run/api/v1/assess \
   -H <span class="s">"content-type: application/json"</span> \
   -d <span class="s">'{
     "claims": [
@@ -183,7 +191,7 @@
       {"id":"b","title":"Major dam breach reported upstream","origin":"bbc","publishedAt":"2026-07-10T21:04:00Z"}
     ]
   }'</span></code></pre>
-<pre id="ex-js"><code><span class="k">const</span> res = <span class="k">await</span> fetch(<span class="s">"https://sourced.run/api/assess"</span>, {
+<pre id="ex-js"><code><span class="k">const</span> res = <span class="k">await</span> fetch(<span class="s">"https://sourced.run/api/v1/assess"</span>, {
   method: <span class="s">"POST"</span>,
   headers: { <span class="s">"content-type"</span>: <span class="s">"application/json"</span> },
   body: JSON.stringify({ claims }),
@@ -193,7 +201,7 @@
 <pre id="ex-py"><code><span class="k">import</span> requests
 
 r = requests.post(
-    <span class="s">"https://sourced.run/api/assess"</span>,
+    <span class="s">"https://sourced.run/api/v1/assess"</span>,
     json={<span class="s">"claims"</span>: [
         {<span class="s">"id"</span>: <span class="s">"a"</span>, <span class="s">"title"</span>: <span class="s">"Major dam breach reported upstream"</span>,
          <span class="s">"origin"</span>: <span class="s">"reuters"</span>, <span class="s">"publishedAt"</span>: <span class="s">"2026-07-10T21:00:00Z"</span>},
@@ -224,8 +232,72 @@ claude mcp add sourced -- npx -y @sourcedhq/mcp
   <p class="muted small">
     Machine-readable summaries of all three surfaces live at
     <a href="/llms.txt">/llms.txt</a> on each domain. This endpoint itself is
-    agent-friendly by design: no auth, CORS open, JSON in/out,
+    agent-friendly by design: no auth required, CORS open, JSON in/out,
     <code>GET</code> returns usage.
+  </p>
+</section>
+
+<section id="keys">
+  <h2><span class="no">9</span>API keys — persistent memory</h2>
+  <p>
+    The anonymous endpoint is a calculator: it answers for the batch you send
+    and forgets you. A key gives the same endpoint a <strong>memory</strong>.
+    Send it on any call:
+  </p>
+<pre><code>Authorization: Bearer sk_src_…</code></pre>
+  <p>What changes — precisely:</p>
+  <div class="tablebox"><table>
+    <tr><th></th><th>anonymous</th><th>with key</th></tr>
+    <tr><td>corroboration counted</td><td>within one request</td><td><strong>across all your requests</strong> — an event reported by a new origin an hour later still corroborates</td></tr>
+    <tr><td>firstSeenAt</td><td>the request time</td><td><strong>the true first sighting</strong> — “who reported this first, and when” survives across calls</td></tr>
+    <tr><td>signals over time</td><td>only within a batch</td><td>a story can go <span class="badge developing">DEVELOPING</span> at 09:00 and <span class="badge confirmed">CONFIRMED</span> at 11:00 — in different requests</td></tr>
+    <tr><td>rate limit</td><td>60/min per IP</td><td>600/min per key</td></tr>
+    <tr><td>transparency chain</td><td>—</td><td>your own hosted, publicly verifiable chain (§10)</td></tr>
+  </table></div>
+  <p class="muted small">
+    The event store keeps derived working state (event keys, counts, first-seen
+    times), retires events after 36 h into nothing — this hosted tier stores no
+    archive of your content. Keys are issued manually while Sourced is young:
+    <a href="mailto:hello@tickwire.news">hello@tickwire.news</a>. Same engine,
+    same guarantees G1–G7 — a key never changes verdict semantics, only how
+    long the engine remembers.
+  </p>
+</section>
+
+<section id="chain">
+  <h2><span class="no">10</span>Chain-as-a-service</h2>
+  <p>
+    Every key owns a <strong>hash-chained transparency log</strong> — the same
+    construction Tickwire runs in production (<a href="https://sourced.network">proof</a>).
+    Commit anything you want to be held to — e.g. a digest of each verdict
+    batch you publish:
+  </p>
+<pre><code><span class="c"># append (writes need YOUR key)</span>
+curl -s -X POST https://sourced.run/api/v1/chain \
+  -H <span class="s">"authorization: Bearer sk_src_…"</span> \
+  -H <span class="s">"content-type: application/json"</span> \
+  -d <span class="s">'{"payload":{"batch":"2026-07-11T21:00Z","digest":"…"}}'</span>
+
+<span class="c"># read (public — that is the point)</span>
+curl -s <span class="s">"https://sourced.run/api/v1/chain?chain=&lt;chainId&gt;&amp;full=1"</span>
+
+<span class="c"># directory of all hosted chains</span>
+curl -s https://sourced.run/api/v1/chains</code></pre>
+  <p>
+    Each append returns a <code>LogRecord</code> whose hash commits to the
+    entire history before it. Reads are public and CORS-open so <em>anyone</em>
+    can fetch your chain and recompute it (<code>POST /api/v1/verify</code>, or
+    in the browser at <a href="https://sourced.network">sourced.network</a>).
+    Heads are <strong>anchored daily into public git history</strong>
+    (<a href="https://github.com/Ryan-hasi/sourced/tree/main/anchors">anchors/</a>) —
+    after that, neither you nor we can rewrite a single record unnoticed.
+    Your <code>chainId</code> is derived one-way from your key: publishing it
+    is safe, writing stays yours alone.
+  </p>
+  <p class="muted small">
+    Limits: 32 kB payload · 30 appends/min · 5000 records/month. This is what
+    “Built on Sourced” means operationally: your claims history becomes
+    checkable by strangers, not just asserted by you.
   </p>
 </section>
 
@@ -258,7 +330,7 @@ $("go").onclick = async () => {
   try { body = JSON.parse(input.value); } catch { stat.textContent = "invalid JSON"; return; }
   try {
     const t0 = performance.now();
-    const r = await fetch("/api/assess", {
+    const r = await fetch("/api/v1/assess", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
