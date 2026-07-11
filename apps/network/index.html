@@ -48,6 +48,7 @@
   <a href="#anchoring">5 · Anchoring in practice</a>
   <a href="#apiref">6 · API reference</a>
   <a href="#registry">7 · Anchor registry</a>
+  <a href="#mark">8 · The ✓ Sourced mark</a>
 </nav>
 
 <section id="suite">
@@ -199,9 +200,55 @@ npx sourced-anchor chain.jsonl --anchors anchors.log
   </div>
 </section>
 
+<section id="mark">
+  <h2><span class="no">8</span>The ✓ Sourced mark</h2>
+  <p>
+    The mark asserts one checkable fact: <strong>the corroboration engine
+    behind this product passes the Sourced conformance suite — unmodified,
+    current version.</strong> Not “we count sources somehow”; the yardstick on
+    this page, passed in full.
+  </p>
+  <p style="margin:16px 0">
+    <img src="/mark/sourced-mark.svg" width="152" height="32" alt="✓ SOURCED (dark)" style="vertical-align:middle;margin-right:10px">
+    <img src="/mark/sourced-mark-light.svg" width="152" height="32" alt="✓ SOURCED (light)" style="vertical-align:middle">
+  </p>
+
+  <h3>How to earn it</h3>
+  <ol>
+    <li>Run <code>runConformance(yourAssess)</code> from <code>@sourcedhq/conformance</code> in your CI, on every release of your engine.</li>
+    <li>Keep the passing run publicly reachable (a CI log or the published JSON report).</li>
+    <li>Display the badge — linked, with attribution (below).</li>
+  </ol>
+  <p class="muted small">
+    Self-serve by design: the suite is the authority, not a committee. False
+    claims are trademark violations (see the policy) and get named publicly —
+    the same undercount principle that governs the engine governs the mark.
+  </p>
+
+  <h3>Attribution — the price of the mark</h3>
+  <p>
+    Using the mark (or the claim “Sourced-conformant” / “Built on Sourced”)
+    <strong>requires visible attribution</strong>: the badge or claim must
+    link to <code>https://sourced.network</code>, and the product’s
+    documentation must state what the verdicts mean — corroborated, never
+    “true.” The code is MIT and free forever; <em>the mark is earned, linked,
+    and honest — or not used at all.</em>
+  </p>
+
+  <h3>Embed</h3>
+<pre><code>&lt;a href="https://sourced.network"&gt;
+  &lt;img src="https://sourced.network/mark/sourced-mark.svg"
+       width="152" height="32" alt="✓ SOURCED — conformant corroboration engine"&gt;
+&lt;/a&gt;</code></pre>
+  <p class="muted small">
+    Light variant: <code>/mark/sourced-mark-light.svg</code>. Full terms:
+    <a href="https://github.com/Ryan-hasi/sourced/blob/main/TRADEMARK-POLICY.md">TRADEMARK-POLICY.md</a>.
+  </p>
+</section>
+
 <footer>
   <div><span style="color:var(--signal)">●</span> SOURCED — corroborated, never “true”</div>
-  <div><a href="https://sourced.ink">SPEC</a> · <a href="https://sourced.run">RUN</a></div>
+  <div><a href="https://sourced.ink">SPEC</a> · <a href="https://sourced.run">RUN</a> · <a href="https://github.com/Ryan-hasi/sourced">GITHUB</a></div>
 </footer>
 
 </div>
