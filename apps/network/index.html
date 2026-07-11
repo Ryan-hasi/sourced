@@ -187,15 +187,20 @@ npx sourced-anchor chain.jsonl --anchors anchors.log
 
 <section id="registry">
   <h2><span class="no">7</span>Anchor registry</h2>
-  <div class="card">
-    <span class="badge">GENESIS</span>
-    <p class="small" style="margin-top:10px">
-      The production chain begins with the first Sourced deployment inside
-      <a href="https://tickwire.news">Tickwire</a>: from that moment, every
-      verdict batch is chained and each anchor lands here as
-      <code>timestamp · seq · head</code> — a public history that can only be
-      extended, never rewritten. This registry is intentionally empty rather
-      than seeded with demo data: the first entry should mean something.
+  <div class="card" id="regcard">
+    <span class="badge" id="regbadge">LOADING</span>
+    <div class="m" id="reginfo" style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--dim)">
+      Reading the Tickwire production chain…
+    </div>
+    <div class="row" id="regactions" hidden>
+      <button class="btn ghost" id="regverify">VERIFY THIS CHAIN NOW</button>
+      <span class="muted small" id="regstat"></span>
+    </div>
+    <p class="small muted" style="margin-top:10px">
+      <a href="https://tickwire.news">Tickwire</a>’s production deployment
+      chains every verdict batch; the head is served publicly at
+      <code>app.tickwire.news/api/sourced</code>. The button fetches the full
+      chain and verifies every link right here — no trust required.
     </p>
   </div>
 </section>
@@ -278,6 +283,45 @@ $("runsuite").onclick = async () => {
     box.appendChild(card);
   } catch (e) { stat.textContent = "failed: " + e; }
 };
+
+// Anchor registry: Tickwire's live production chain head + one-click verify.
+(async () => {
+  const badge = $("regbadge"), info = $("reginfo"), actions = $("regactions");
+  try {
+    const meta = await (await fetch("https://app.tickwire.news/api/sourced")).json();
+    if (!meta.head) {
+      badge.textContent = "GENESIS";
+      info.textContent = "Chain initialized — first record pending.";
+      return;
+    }
+    badge.textContent = "TICKWIRE · PRODUCTION";
+    badge.classList.add("ok");
+    info.innerHTML =
+      "record seq " + meta.seq + " · " + esc(meta.at.replace("T", " ").slice(0, 16)) + " UTC · since " + esc(meta.firstMonth) +
+      "<br>head <code>" + esc(meta.head) + "</code>";
+    actions.hidden = false;
+    $("regverify").onclick = async () => {
+      const stat = $("regstat");
+      stat.textContent = "fetching full chain…";
+      try {
+        const full = await (await fetch("https://app.tickwire.news/api/sourced?full=1")).json();
+        stat.textContent = "verifying " + full.records.length + " records…";
+        const r = await fetch("/api/verify", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ chain: full.records }),
+        });
+        const v = await r.json();
+        stat.innerHTML = v.ok
+          ? '<span class="badge ok" style="margin-left:0">VALID</span> ' + v.length + " records, head matches — history intact."
+          : '<span class="badge fail" style="margin-left:0">BROKEN</span> record ' + v.badIndex + ": " + esc(v.reason);
+      } catch (e) { stat.textContent = "failed: " + e; }
+    };
+  } catch {
+    badge.textContent = "OFFLINE";
+    info.textContent = "Production chain not reachable right now.";
+  }
+})();
 
 $("verifybtn").onclick = async () => {
   const stat = $("vstat"), box = $("vout");

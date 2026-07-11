@@ -1,6 +1,6 @@
 {
   "name": "@sourcedhq/log",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Hash-chained transparency log for Sourced verdicts — a tamper-evident, anchorable history of every verdict ever issued.",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,5 +26,10 @@
   "homepage": "https://sourced.ink",
   "engines": {
     "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ryan-hasi/sourced.git",
+    "directory": "packages/log"
   }
 }

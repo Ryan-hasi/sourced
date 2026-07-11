@@ -1,6 +1,6 @@
 {
   "name": "@sourcedhq/mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Sourced as an MCP server for AI agents: corroboration verdicts (assess), transparency-chain verification (verify_chain), and the G1–G7 honesty suite (run_conformance).",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,9 +23,9 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@sourcedhq/core": "^0.1.0",
-    "@sourcedhq/log": "^0.1.0",
-    "@sourcedhq/conformance": "^0.1.0"
+    "@sourcedhq/core": "^0.1.1",
+    "@sourcedhq/log": "^0.1.1",
+    "@sourcedhq/conformance": "^0.1.1"
   },
   "keywords": [
     "mcp",
@@ -39,5 +39,10 @@
   "homepage": "https://sourced.ink",
   "engines": {
     "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ryan-hasi/sourced.git",
+    "directory": "packages/mcp"
   }
 }
