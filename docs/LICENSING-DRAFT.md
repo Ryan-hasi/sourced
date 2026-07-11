@@ -1,7 +1,7 @@
 # Licensing — DECIDED 2026-07-11: Firefox model (MIT code + reserved name)
 
-> Status: DRAFT. Nothing here is granted until Ryan decides. The repo stays
-> "all rights reserved" meanwhile.
+> Status: DECIDED (Ryan, 2026-07-11) and IN FORCE — see /LICENSE (MIT) and
+> /TRADEMARK-POLICY.md. This file remains as the decision record.
 
 ## Recommended model: the Firefox/VLC split — code open, NAME protected
 
