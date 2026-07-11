@@ -35,11 +35,15 @@ jobs:
         run: |
           set -e
           mkdir -p anchors
-          DIR=$(curl -sf --max-time 20 https://sourced.run/api/v1/chains || echo '{"chains":[]}')
+          DIR=$(curl -sfL --max-time 20 https://sourced.run/api/v1/chains || echo '{"chains":[]}')
           echo "$DIR" | python3 -c "
           import json, sys, datetime
           now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-          for c in json.load(sys.stdin).get('chains', []):
+          try:
+              chains = json.load(sys.stdin).get('chains', [])
+          except ValueError:
+              chains = []
+          for c in chains:
               cid, head, seq = c.get('chainId',''), c.get('head',''), c.get('seq','')
               if not cid or not head: continue
               path = f'anchors/{cid}.log'
