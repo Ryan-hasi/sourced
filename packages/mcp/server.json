@@ -3,12 +3,12 @@
   "name": "io.github.ryan-hasi/sourced",
   "description": "Corroboration verdicts for claims: how many independent sources corroborate, since when, with receipts. Honest by design — never says 'true'. Tools: assess (session memory), verify_chain, run_conformance.",
   "repository": { "url": "https://github.com/Ryan-hasi/sourced", "source": "github" },
-  "version": "0.1.1",
+  "version": "1.0.0",
   "packages": [
     {
       "registry_type": "npm",
       "identifier": "@sourcedhq/mcp",
-      "version": "0.1.1",
+      "version": "1.0.0",
       "transport": { "type": "stdio" }
     }
   ]

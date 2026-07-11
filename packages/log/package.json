@@ -1,6 +1,6 @@
 {
   "name": "@sourcedhq/log",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "Hash-chained transparency log for Sourced verdicts — a tamper-evident, anchorable history of every verdict ever issued.",
   "type": "module",
   "main": "./dist/index.js",

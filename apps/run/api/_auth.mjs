@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 import { kvGet, kvIncrEx } from "./_kv.mjs";
 
 export const API_VERSION = "v1";
-export const ENGINE = "@sourcedhq/core@0.1.1";
+export const ENGINE = "@sourcedhq/core@1.0.0";
 
 export const TIERS = {
   anon: { rpm: 60, appendRpm: 0 },

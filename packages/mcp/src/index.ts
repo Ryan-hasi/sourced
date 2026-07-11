@@ -17,7 +17,7 @@ import { assess, createMemoryStore, DEFAULT_CONFIG, type Claim } from "@sourcedh
 import { verify, type LogRecord } from "@sourcedhq/log";
 import { CASES } from "@sourcedhq/conformance";
 
-const VERSION = "0.1.0";
+const VERSION = "1.0.0";
 const FALLBACK_PROTOCOL = "2025-06-18";
 
 // Session event store — corroboration accumulates across calls (see above).
