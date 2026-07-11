@@ -1,0 +1,15 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.ryan-hasi/sourced",
+  "description": "Corroboration verdicts for claims: how many independent sources corroborate, since when, with receipts. Honest by design — never says 'true'. Tools: assess (session memory), verify_chain, run_conformance.",
+  "repository": { "url": "https://github.com/Ryan-hasi/sourced", "source": "github" },
+  "version": "0.1.1",
+  "packages": [
+    {
+      "registry_type": "npm",
+      "identifier": "@sourcedhq/mcp",
+      "version": "0.1.1",
+      "transport": { "type": "stdio" }
+    }
+  ]
+}
