@@ -4,6 +4,7 @@
  * Optionally { payload, seq } to prove a payload's inclusion at a position.
  */
 import { verify, verifyPayloadAt } from "./_log.mjs";
+import { resolveCaller, rateLimit, stamp } from "./_auth.mjs";
 
 function readBody(req) {
   if (req.body !== undefined) {
@@ -24,9 +25,14 @@ function readBody(req) {
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Sourced-Key");
+  stamp(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "POST a chain" });
+
+  const caller = await resolveCaller(req);
+  if (caller.error) return res.status(caller.status).json({ error: caller.error });
+  if (!(await rateLimit(req, res, caller))) return;
 
   let body;
   try { body = await readBody(req); } catch (e) { return res.status(400).json({ error: String(e.message ?? e) }); }

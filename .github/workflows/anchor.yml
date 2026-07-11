@@ -31,8 +31,34 @@ jobs:
             echo "head unchanged — no new anchor"; exit 0
           fi
           echo "$LINE" >> anchors/tickwire.log
+      - name: Anchor hosted chains (sourced.run chain-as-a-service)
+        run: |
+          set -e
+          mkdir -p anchors
+          DIR=$(curl -sf --max-time 20 https://sourced.run/api/v1/chains || echo '{"chains":[]}')
+          echo "$DIR" | python3 -c "
+          import json, sys, datetime
+          now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          for c in json.load(sys.stdin).get('chains', []):
+              cid, head, seq = c.get('chainId',''), c.get('head',''), c.get('seq','')
+              if not cid or not head: continue
+              path = f'anchors/{cid}.log'
+              try:
+                  last = open(path).read().rstrip().splitlines()[-1]
+              except (FileNotFoundError, IndexError):
+                  last = ''
+              if head in last:
+                  continue
+              with open(path, 'a') as f:
+                  f.write(f'{now} chain={cid} seq={seq} head={head}\n')
+              print(f'anchored {cid} seq={seq}')
+          "
+      - name: Commit anchors
+        run: |
+          set -e
           git config user.name "sourced-anchor"
           git config user.email "anchor@sourced.network"
-          git add anchors/tickwire.log
-          git commit -m "anchor: tickwire seq=$SEQ head=${HEAD:0:16}…"
+          git add anchors/
+          git diff --cached --quiet && { echo "nothing new to anchor"; exit 0; }
+          git commit -m "anchor: daily heads"
           git push
