@@ -17,7 +17,7 @@
     "README.md"
   ],
   "bin": {
-    "sourced-mcp": "./dist/server.js"
+    "sourced-mcp": "dist/server.js"
   },
   "scripts": {
     "build": "tsc -p ."
