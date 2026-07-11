@@ -92,9 +92,11 @@
   <h2><span class="no">3</span>Verify a transparency chain</h2>
   <p>
     Paste a chain below — JSONL, one record per line, the exact format the
-    <code>sourced-anchor</code> CLI writes. The verifier recomputes every
-    record hash, checks every back-link and the sequence numbering, and
-    reports either the head hash or the first broken record.
+    <code>sourced-anchor</code> CLI writes. Every record hash, back-link and
+    sequence number is recomputed <strong>in your browser</strong> (WebCrypto)
+    — this server is deliberately not part of the trust path. You get the
+    receipts, not a flag: per-record checkmarks and the computed head.
+    (<code>POST /api/verify</code> exists for programmatic use, §6.)
   </p>
   <textarea id="chain" rows="7" spellcheck="false" placeholder='{"seq":0,"ts":1767225600000,"payloadHash":"…","prevHash":"","hash":"…"}&#10;{"seq":1,"ts":1767225601000,"payloadHash":"…","prevHash":"…","hash":"…"}'></textarea>
   <div class="row">
@@ -193,9 +195,10 @@ npx sourced-anchor chain.jsonl --anchors anchors.log
       Reading the Tickwire production chain…
     </div>
     <div class="row" id="regactions" hidden>
-      <button class="btn ghost" id="regverify">VERIFY THIS CHAIN NOW</button>
+      <button class="btn ghost" id="regverify">RECOMPUTE THIS CHAIN IN YOUR BROWSER</button>
       <span class="muted small" id="regstat"></span>
     </div>
+    <div id="regout"></div>
     <p class="small muted" style="margin-top:10px">
       <a href="https://tickwire.news">Tickwire</a>’s production deployment
       chains every verdict batch; the head is served publicly at
@@ -261,6 +264,57 @@ npx sourced-anchor chain.jsonl --anchors anchors.log
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
 
+// ---- In-browser chain verification (WebCrypto) — the receipts, recomputed
+// on YOUR machine. Sourced never asks you to accept a bare "valid": every
+// hash below is redone locally; the server is not part of the trust path.
+async function sha256hex(s) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function verifyLocally(records) {
+  const rows = [];
+  let ok = true;
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    const expectedPrev = i === 0 ? "" : records[i - 1].hash;
+    const recomputed = await sha256hex(`${r.seq}|${r.ts}|${r.payloadHash}|${r.prevHash}`);
+    const row = {
+      seq: r.seq, ts: r.ts, payloadHash: r.payloadHash,
+      hashOk: recomputed === r.hash,
+      linkOk: r.prevHash === expectedPrev,
+      seqOk: r.seq === i,
+    };
+    if (!row.hashOk || !row.linkOk || !row.seqOk) ok = false;
+    rows.push(row);
+  }
+  return { ok, rows, computedHead: records.length ? records[records.length - 1].hash : null };
+}
+function receiptsTable(rows) {
+  const cell = (b) => b ? '<span style="color:var(--ok)">✓</span>' : '<span style="color:var(--signal)">✗ FAIL</span>';
+  const tr = rows.map((r) =>
+    "<tr><td>" + r.seq + "</td><td>" + esc(new Date(r.ts).toISOString().replace("T", " ").slice(0, 16)) +
+    "</td><td><code title=\"" + esc(r.payloadHash) + "\">" + esc(r.payloadHash.slice(0, 16)) + "…</code></td><td>" +
+    cell(r.hashOk) + "</td><td>" + cell(r.linkOk && r.seqOk) + "</td></tr>").join("");
+  return '<div class="tablebox"><table><tr><th>seq</th><th>appended (UTC)</th><th>commits to verdicts</th><th>hash recomputed</th><th>chained to prev</th></tr>' + tr + "</table></div>";
+}
+function receiptsSummary(v, publishedHead) {
+  const headOk = !publishedHead || v.computedHead === publishedHead;
+  const n = v.rows.length;
+  const good = v.rows.filter((r) => r.hashOk && r.linkOk && r.seqOk).length;
+  let html = '<p class="small" style="margin-top:12px"><strong>' + good + " of " + n +
+    " records recomputed in your browser</strong> — not on our server. ";
+  html += v.ok
+    ? "Every hash matches, every link holds."
+    : "Broken records are marked below — everything after the first ✗ is untrustworthy.";
+  html += "</p><p class=\"small\" style=\"font-family:var(--mono);font-size:11.5px;color:var(--dim)\">computed head <code>" + esc(v.computedHead ?? "—") + "</code>";
+  if (publishedHead) {
+    html += "<br>published head <code>" + esc(publishedHead) + "</code> → " +
+      (headOk ? '<span style="color:var(--ok)">identical</span>' : '<span style="color:var(--signal)">MISMATCH</span>');
+  }
+  html += "</p>";
+  return html;
+}
+
 $("runsuite").onclick = async () => {
   const stat = $("suitestat"), box = $("suiteout");
   stat.textContent = "attacking the engine…"; box.innerHTML = "";
@@ -301,20 +355,15 @@ $("runsuite").onclick = async () => {
       "<br>head <code>" + esc(meta.head) + "</code>";
     actions.hidden = false;
     $("regverify").onclick = async () => {
-      const stat = $("regstat");
+      const stat = $("regstat"), out = $("regout");
+      out.innerHTML = "";
       stat.textContent = "fetching full chain…";
       try {
         const full = await (await fetch("https://app.tickwire.news/api/sourced?full=1")).json();
-        stat.textContent = "verifying " + full.records.length + " records…";
-        const r = await fetch("/api/verify", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ chain: full.records }),
-        });
-        const v = await r.json();
-        stat.innerHTML = v.ok
-          ? '<span class="badge ok" style="margin-left:0">VALID</span> ' + v.length + " records, head matches — history intact."
-          : '<span class="badge fail" style="margin-left:0">BROKEN</span> record ' + v.badIndex + ": " + esc(v.reason);
+        stat.textContent = "recomputing " + full.records.length + " records in your browser…";
+        const v = await verifyLocally(full.records);
+        stat.textContent = "";
+        out.innerHTML = receiptsSummary(v, meta.head) + receiptsTable(v.rows);
       } catch (e) { stat.textContent = "failed: " + e; }
     };
   } catch {
@@ -325,23 +374,19 @@ $("runsuite").onclick = async () => {
 
 $("verifybtn").onclick = async () => {
   const stat = $("vstat"), box = $("vout");
-  stat.textContent = "verifying…"; box.innerHTML = "";
+  stat.textContent = "recomputing in your browser…"; box.innerHTML = "";
   try {
-    const r = await fetch("/api/verify", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonl: $("chain").value }),
-    });
-    const data = await r.json();
-    if (data.error) { stat.textContent = data.error; return; }
+    let records;
+    try {
+      records = $("chain").value.split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l));
+    } catch { stat.textContent = "each line must be one JSON record"; return; }
+    if (records.length === 0) { stat.textContent = "paste a chain first"; return; }
+    const v = await verifyLocally(records);
     stat.textContent = "";
     const card = document.createElement("div");
     card.className = "card";
-    card.innerHTML = data.ok
-      ? '<span class="badge ok" style="margin-left:0">CHAIN VALID</span><div class="m" style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--dim)">' +
-        data.length + " records · head <code>" + esc(data.head) + "</code><br>Publish or compare this head — it commits to the entire history above it.</div>"
-      : '<span class="badge fail" style="margin-left:0">CHAIN BROKEN</span><div class="m" style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--dim)">record ' +
-        data.badIndex + ": " + esc(data.reason) + " — everything from this record on is untrustworthy.</div>";
+    card.innerHTML = receiptsSummary(v, null) + receiptsTable(v.rows) +
+      '<p class="small muted" style="margin-top:8px">Compare the computed head against the head published wherever this chain is anchored — that comparison, not this page, is the proof.</p>';
     box.appendChild(card);
   } catch (e) { stat.textContent = "failed: " + e; }
 };

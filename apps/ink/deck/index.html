@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Sourced — deck</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23d4111e'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --paper:#0a0a0a; --ink:#ededed; --dim:#a1a1aa; --faint:#63636b;
+    --line:#262629; --signal:#f04d58; --ok:#3dd68c;
+    --mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);overflow:hidden}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;
+    padding:7vh 9vw;line-height:1.5}
+  .slide.on{display:flex}
+  .kick{font-family:var(--mono);font-size:clamp(11px,1.2vw,14px);letter-spacing:.26em;color:var(--faint);
+    text-transform:uppercase;margin-bottom:3vh}
+  .kick::before{content:"● ";color:var(--signal)}
+  h1{font-size:clamp(34px,6.2vw,84px);line-height:1.06;letter-spacing:-.02em;font-weight:760;max-width:22ch}
+  h1 em{font-style:normal;color:var(--signal)}
+  h2{font-size:clamp(26px,4.2vw,56px);line-height:1.1;letter-spacing:-.02em;font-weight:740;max-width:24ch;margin-bottom:3.5vh}
+  h2 em{font-style:normal;color:var(--signal)}
+  .sub{color:var(--dim);font-size:clamp(16px,1.9vw,26px);max-width:56ch;margin-top:2.5vh}
+  .big{font-size:clamp(18px,2.3vw,30px);max-width:52ch;color:var(--ink)}
+  .rows{display:flex;flex-direction:column;gap:2.2vh;max-width:1000px}
+  .r{display:flex;gap:2.2vw;align-items:baseline;border-top:1px solid var(--line);padding-top:2vh}
+  .r:first-child{border-top:0}
+  .r b{font-family:var(--mono);color:var(--signal);font-size:clamp(13px,1.4vw,17px);
+    letter-spacing:.1em;flex:0 0 11ch;font-weight:700}
+  .r div{color:var(--dim);font-size:clamp(15px,1.8vw,23px)}
+  .r div strong{color:var(--ink);font-weight:650}
+  code,pre{font-family:var(--mono)}
+  pre{background:#141416;border:1px solid var(--line);border-radius:12px;
+    padding:2.6vh 2.2vw;font-size:clamp(13px,1.55vw,20px);line-height:1.65;overflow:hidden;width:fit-content;max-width:100%}
+  pre .c{color:var(--faint)} pre .s{color:#8cb4ff} pre .k{font-weight:700}
+  .foot{position:absolute;bottom:3.2vh;left:9vw;right:9vw;display:flex;justify-content:space-between;
+    font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--faint)}
+  .dots{position:absolute;bottom:3.4vh;left:50%;transform:translateX(-50%);display:flex;gap:7px}
+  .dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+  .dots i.on{background:var(--signal)}
+  .hint{position:absolute;top:3.2vh;right:9vw;font-family:var(--mono);font-size:11px;
+    letter-spacing:.14em;color:var(--faint)}
+  .live{font-family:var(--mono);color:var(--dim);font-size:clamp(14px,1.6vw,20px);margin-top:3vh}
+  .live b{color:var(--ok);font-weight:700}
+  .pill{display:inline-block;border:1px solid var(--line);border-radius:8px;padding:1.2vh 1.6vw;
+    font-family:var(--mono);font-size:clamp(12px,1.35vw,17px);color:var(--dim);margin:.6vh .5vw .6vh 0}
+  .pill b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<!-- 1 · Title -->
+<section class="slide on">
+  <div class="kick">Sourced — sourced.ink</div>
+  <h1>Confirmed by sources.<br>Never <em>“true.”</em></h1>
+  <p class="sub">The corroboration engine: how many independent sources confirm a claim —
+     since when, and who. The missing trust layer for news, feeds and AI.</p>
+</section>
+
+<!-- 2 · Problem -->
+<section class="slide">
+  <div class="kick">The problem</div>
+  <h2>Everything is equally loud.</h2>
+  <div class="rows">
+    <div class="r"><b>FEEDS</b><div>A thousand headlines, <strong>no signal for what the world actually agrees happened</strong>. Readers eyeball logos and guess.</div></div>
+    <div class="r"><b>AI</b><div>Models assert answers with confidence — <strong>grounding tools collapse everything to a true/false score</strong> nobody can check.</div></div>
+    <div class="r"><b>TRUST</b><div>Every “verified” badge on the internet is <strong>a flag someone put there</strong>. Nothing behind it.</div></div>
+  </div>
+</section>
+
+<!-- 3 · Insight -->
+<section class="slide">
+  <div class="kick">The insight</div>
+  <h2>Truth isn’t computable.<br><em>Corroboration is.</em></h2>
+  <p class="big">“Six independent outlets report this, first seen 17:04” is a checkable fact —
+     not a verdict handed down. It’s journalism’s oldest rule — <em>get a second source</em> —
+     computed continuously, honestly, over a live stream.</p>
+</section>
+
+<!-- 4 · What it is -->
+<section class="slide">
+  <div class="kick">The primitive</div>
+  <h2>One small function.</h2>
+<pre><span class="k">const</span> verdicts = <span class="k">await</span> assess(claims)
+
+<span class="c">// per claim:</span>
+{ corroboration: <span class="s">4</span>,                       <span class="c">// distinct INDEPENDENT sources</span>
+  corroboratingSources: [<span class="s">"reuters"</span>, <span class="s">"bbc"</span>, <span class="s">"ap"</span>],  <span class="c">// the receipts</span>
+  firstSeenAt: <span class="s">"2026-07-10T17:04Z"</span>,       <span class="c">// event memory</span>
+  signal: <span class="s">"confirmed"</span> }                   <span class="c">// never "true"</span></pre>
+  <p class="sub">Zero dependencies. Storage, clustering and thresholds are injected —
+     it runs on news, outages, OSINT, sensors, moderation queues.</p>
+</section>
+
+<!-- 5 · Honesty -->
+<section class="slide">
+  <div class="kick">Why it can be trusted</div>
+  <h2>Honesty you can <em>execute.</em></h2>
+  <div class="rows">
+    <div class="r"><b>UNDERCOUNT</b><div>It would rather miss a corroboration than invent one. <strong>A false “confirmed” is a reputation balloon that pops.</strong></div></div>
+    <div class="r"><b>INDEPENDENT</b><div>Ten copies of one wire story count as <strong>one</strong>. Origins, not articles.</div></div>
+    <div class="r"><b>RECEIPTS</b><div>No count without <strong>who and since when</strong>. Single sources stay unlabeled.</div></div>
+    <div class="r"><b>PROVEN</b><div>All of it ships as an <strong>adversarial test suite anyone can run, live</strong> — not as promises.</div></div>
+  </div>
+</section>
+
+<!-- 6 · Live -->
+<section class="slide">
+  <div class="kick">Not a slide — production</div>
+  <h2>It’s running <em>right now.</em></h2>
+  <p class="live" id="live">● connecting to the live engine…</p>
+  <p class="sub">Live verdicts from the production deployment — every number on this
+     slide is being computed as you watch. sourced.ink shows the same pulse.</p>
+</section>
+
+<!-- 7 · Proof surfaces -->
+<section class="slide">
+  <div class="kick">The three surfaces</div>
+  <h2>Spec. Run. <em>Proof.</em></h2>
+  <div class="rows">
+    <div class="r"><b>SOURCED.INK</b><div>The full specification — data model, algorithm, the guarantees.</div></div>
+    <div class="r"><b>SOURCED.RUN</b><div>Paste claims → verdicts. Free public API, no auth. <strong>Agents install it in one line</strong> (MCP).</div></div>
+    <div class="r"><b>SOURCED.NETWORK</b><div>The adversarial suite runs live in your browser; the production history is <strong>hash-chained and recomputable on your machine</strong> — no trust required.</div></div>
+  </div>
+</section>
+
+<!-- 8 · Tickwire -->
+<section class="slide">
+  <div class="kick">Proof in production</div>
+  <h2>Built on Sourced: <em>Tickwire.</em></h2>
+  <p class="big">Tickwire — the live news channel for the screen you already leave on —
+     runs every story through the engine. Every “✓ N sources” badge is a Sourced
+     verdict with receipts. The first official bearer of the ✓ Sourced mark.</p>
+  <p class="sub">The app proves the engine. The engine makes the app the only calm,
+     honest news screen on the market. Each pushes the other.</p>
+</section>
+
+<!-- 9 · Moat -->
+<section class="slide">
+  <div class="kick">Why it can’t just be copied</div>
+  <h2>The code is the <em>cheapest</em> part.</h2>
+  <div class="rows">
+    <div class="r"><b>TIME</b><div>The event archive — <strong>when the world first reported what</strong> — grows every hour and can’t be reconstructed later.</div></div>
+    <div class="r"><b>PROOF</b><div>A hash-chained verdict history, publicly recomputable. <strong>You can clone code; you can’t fake the years.</strong></div></div>
+    <div class="r"><b>THE YARDSTICK</b><div>Whoever publishes the conformance suite defines the category. “Sourced-conformant” is earned, not claimed.</div></div>
+    <div class="r"><b>THE MARK</b><div>Code is MIT — <strong>the name and the ✓ mark are reserved</strong>. Attribution is the price of the badge.</div></div>
+  </div>
+</section>
+
+<!-- 10 · Agents -->
+<section class="slide">
+  <div class="kick">The distribution nobody else has</div>
+  <h2>AI agents can <em>ask for it.</em></h2>
+<pre>claude mcp add sourced -- npx -y @sourcedhq/mcp</pre>
+  <p class="big">One line, and any Claude or Cursor session carries the primitive —
+     with session memory: feed it reports while researching and watch events corroborate.</p>
+  <p class="sub">The honest grounding slot for AI is empty. Everyone else answers “true/false”.
+     Sourced answers “corroborated by N — check the receipts.”</p>
+</section>
+
+<!-- 11 · Close -->
+<section class="slide">
+  <div class="kick">Sourced</div>
+  <h1>What people see.<br>What people can <em>believe.</em></h1>
+  <p class="sub" style="margin-top:3.5vh">
+    <span class="pill">spec — <b>sourced.ink</b></span>
+    <span class="pill">try it — <b>sourced.run</b></span>
+    <span class="pill">check it — <b>sourced.network</b></span>
+    <span class="pill">in production — <b>tickwire.news</b></span>
+  </p>
+</section>
+
+<div class="hint">← → · CLICK</div>
+<div class="dots" id="dots"></div>
+<div class="foot"><span>● SOURCED — corroborated, never “true”</span><span id="pg"></span></div>
+
+<script>
+const slides = [...document.querySelectorAll(".slide")];
+const dots = document.getElementById("dots");
+slides.forEach(() => dots.appendChild(document.createElement("i")));
+let cur = 0;
+function show(n) {
+  cur = Math.max(0, Math.min(slides.length - 1, n));
+  slides.forEach((s, i) => s.classList.toggle("on", i === cur));
+  [...dots.children].forEach((d, i) => d.classList.toggle("on", i === cur));
+  document.getElementById("pg").textContent = (cur + 1) + " / " + slides.length;
+}
+show(0);
+addEventListener("keydown", (e) => {
+  if (["ArrowRight", " ", "PageDown"].includes(e.key)) show(cur + 1);
+  if (["ArrowLeft", "PageUp"].includes(e.key)) show(cur - 1);
+});
+addEventListener("click", (e) => show(e.clientX > innerWidth / 3 ? cur + 1 : cur - 1));
+
+// Slide 6: real production numbers, fetched live.
+fetch("/api/live").then(r => r.json()).then(d => {
+  if (!d.claims) return;
+  document.getElementById("live").innerHTML =
+    "● LIVE — <b>" + d.claims + "</b> claims from <b>" + d.origins +
+    "</b> independent origins on the wire · <b>" + d.corroborated + "</b> corroborated right now" +
+    (d.top && d.top.corroboration >= 2 ? " · top event “" + d.top.title + "” × <b>" + d.top.corroboration + "</b> sources" : "");
+}).catch(() => {});
+</script>
+</body>
+</html>
