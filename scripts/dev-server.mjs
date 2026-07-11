@@ -18,7 +18,8 @@ createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const path = url.pathname;
   if (path.startsWith("/api/")) {
-    const file = join(root, "api", path.slice(5).replace(/[^a-z0-9_-]/gi, "") + ".mjs");
+    const fn = path.slice(5).split("/").map((s) => s.replace(/[^a-z0-9_-]/gi, "")).filter(Boolean).join("/");
+    const file = join(root, "api", fn + ".mjs");
     if (!existsSync(file)) { res.writeHead(404).end("no such function"); return; }
     const mod = await import(pathToFileURL(file));
     // minimal res.status().json() shim
