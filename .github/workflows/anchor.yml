@@ -1,0 +1,38 @@
+name: anchor
+# Anchors the Tickwire production chain head into this repo's public commit
+# history — a place we cannot silently edit. Each line in anchors/tickwire.log
+# commits to the ENTIRE verdict history up to that point; the git commit
+# timestamps make backdating impossible without it being visible to everyone.
+on:
+  schedule:
+    - cron: "17 3 * * *" # daily, 03:17 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  anchor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch head and append anchor
+        run: |
+          set -e
+          META=$(curl -sf --max-time 20 https://app.tickwire.news/api/sourced)
+          HEAD=$(echo "$META" | python3 -c "import json,sys; print(json.load(sys.stdin).get('head',''))")
+          SEQ=$(echo "$META" | python3 -c "import json,sys; print(json.load(sys.stdin).get('seq',''))")
+          AT=$(echo "$META" | python3 -c "import json,sys; print(json.load(sys.stdin).get('at',''))")
+          if [ -z "$HEAD" ]; then echo "no head yet — nothing to anchor"; exit 0; fi
+          mkdir -p anchors
+          LINE="$(date -u +%Y-%m-%dT%H:%M:%SZ) chain=tickwire seq=$SEQ recordAt=$AT head=$HEAD"
+          # append only if this head isn't already the latest anchored one
+          if [ -f anchors/tickwire.log ] && tail -1 anchors/tickwire.log | grep -q "$HEAD"; then
+            echo "head unchanged — no new anchor"; exit 0
+          fi
+          echo "$LINE" >> anchors/tickwire.log
+          git config user.name "sourced-anchor"
+          git config user.email "anchor@sourced.network"
+          git add anchors/tickwire.log
+          git commit -m "anchor: tickwire seq=$SEQ head=${HEAD:0:16}…"
+          git push
