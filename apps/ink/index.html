@@ -398,12 +398,17 @@
   <p class="muted small">
     Agent-readable summaries: <a href="/llms.txt">/llms.txt</a> on every Sourced domain.
   </p>
+  <h3>Install</h3>
+<pre><code><span class="c"># the engine</span>
+npm install @sourcedhq/core
+
+<span class="c"># give it to your AI agent (Claude Code)</span>
+claude mcp add sourced -- npx -y @sourcedhq/mcp</code></pre>
   <p>
-    <strong>Status:</strong> v0.1.0. The specification on this page is stable —
-    the guarantees are the contract; API names may still sharpen before 1.0.
-    npm publication under <code>@sourcedhq</code> is imminent; until then the
-    hosted API at <a href="https://sourced.run">sourced.run</a> is the fastest
-    way to use the engine.
+    <strong>Status:</strong> v0.1.0, published on npm. The specification on
+    this page is stable — the guarantees are the contract; API names may still
+    sharpen before 1.0. No install needed to evaluate: the hosted API at
+    <a href="https://sourced.run">sourced.run</a> runs the same engine.
   </p>
   <p>
     <strong>License:</strong> not yet granted — all rights reserved while the
