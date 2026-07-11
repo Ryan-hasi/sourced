@@ -16,6 +16,9 @@ Example:
 curl -s https://sourced.run/api/assess -H "content-type: application/json" -d '{"claims":[{"id":"a","title":"Major dam breach reported upstream","origin":"reuters","publishedAt":"2026-07-10T21:00:00Z"},{"id":"b","title":"Major dam breach reported upstream","origin":"bbc","publishedAt":"2026-07-10T21:04:00Z"}]}'
 → verdicts[1] = { "corroboration": 2, "corroboratingSources": ["reuters"], "signal": "breaking", ... }
 
+Machine-readable contract: https://sourced.run/openapi.json (OpenAPI 3.1 — /api/assess and /api/verify).
+Also on this host: POST /api/verify — verify a Sourced transparency chain programmatically ({ chain: LogRecord[] } or { jsonl }, optional inclusion proof via { payload, seq }).
+
 ## For AI agents
 
 MCP server (stdio): `npx -y @sourcedhq/mcp` — server name "sourced", tools: assess (session memory accumulates corroboration across calls), verify_chain, run_conformance. Persistent event memory (first-seen across runs) = run @sourcedhq/core yourself with a store.
