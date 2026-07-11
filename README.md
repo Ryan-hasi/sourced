@@ -110,5 +110,10 @@ app is a Sourced verdict, receipts included.
 ## Status & license
 
 Early, honest, moving. The spec is stable (the guarantees are the contract);
-the API may still sharpen before 1.0. License: not yet granted — all rights
-reserved until the licensing decision lands. Contact: hello@tickwire.news.
+the API may still sharpen before 1.0.
+
+**License: MIT** for all code (see LICENSE). The **Sourced name and mark are
+reserved** — forks welcome, under their own name (see TRADEMARK-POLICY.md).
+"Sourced-conformant" is a claim you earn by passing `@sourcedhq/conformance`.
+
+Contact: hello@tickwire.news.

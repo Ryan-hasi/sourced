@@ -1,11 +1,24 @@
-# Interim license
+MIT License
 
-Copyright (c) 2026 Ryan Hasenfratz. All rights reserved.
+Copyright (c) 2026 Ryan Hasenfratz
 
-You may install and use this package, unmodified, via npm/npx — including
-commercially. Redistribution outside npm and modified/derivative versions
-require permission until the final license lands (an open-core model is the
-declared direction; see https://sourced.ink).
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-The "Sourced" name and the ● mark are reserved in every case: forks or
-reimplementations may not present themselves as Sourced.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+Note: this license covers the CODE. The "Sourced" name and the Sourced mark
+are not licensed — see TRADEMARK-POLICY.md.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
