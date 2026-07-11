@@ -17,7 +17,7 @@
     "README.md"
   ],
   "bin": {
-    "sourced-anchor": "./dist/cli.js"
+    "sourced-anchor": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc -p ."
