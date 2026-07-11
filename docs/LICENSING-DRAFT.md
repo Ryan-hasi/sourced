@@ -1,4 +1,4 @@
-# Licensing — draft for the decision (NOT in force)
+# Licensing — DECIDED 2026-07-11: Firefox model (MIT code + reserved name)
 
 > Status: DRAFT. Nothing here is granted until Ryan decides. The repo stays
 > "all rights reserved" meanwhile.
