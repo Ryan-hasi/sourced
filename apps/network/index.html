@@ -157,6 +157,7 @@ npx sourced-anchor chain.jsonl --anchors anchors.log
 <span class="c"># → 2026-07-11T09:00:00.000Z seq=1041 head=ed2a7dba…c416e80</span>
 <span class="c"># commit anchors.log — the git history becomes the anchor trail</span></code></pre>
   <ul class="small">
+    <li><strong>Live practice:</strong> Tickwire’s production head is anchored daily into this project’s public git history — <a href="https://github.com/Ryan-hasi/sourced/blob/main/anchors/tickwire.log">anchors/tickwire.log</a>. Commit timestamps there cannot be backdated, not even by us.</li>
     <li>Anchor frequency is a policy choice: per deploy, hourly, daily. Each anchor covers everything before it, so sparse anchoring still proves the past.</li>
     <li>Verification needs no trust in the operator: chain + published head is sufficient.</li>
     <li>What it does NOT prove: that verdicts were <em>correct</em> — only that they were <em>not rewritten afterwards</em>. Correctness is the conformance suite’s job (§1). The two together are the whole claim.</li>
@@ -202,9 +203,26 @@ npx sourced-anchor chain.jsonl --anchors anchors.log
     <p class="small muted" style="margin-top:10px">
       <a href="https://tickwire.news">Tickwire</a>’s production deployment
       chains every verdict batch; the head is served publicly at
-      <code>app.tickwire.news/api/sourced</code>. The button fetches the full
-      chain and verifies every link right here — no trust required.
+      <code>app.tickwire.news/api/sourced</code>, and once a day the head is
+      <strong>anchored into public git history</strong> —
+      <a href="https://github.com/Ryan-hasi/sourced/blob/main/anchors/tickwire.log">anchors/tickwire.log</a>,
+      whose commit timestamps not even we can backdate. Everything you need to
+      verify is public: the chain, the math, the anchors — and a browser.
     </p>
+
+    <h3 style="margin-top:26px">Check a hash</h3>
+    <p class="small muted">
+      Got a head hash — from an anchor line, a screenshot, an old tweet?
+      Paste it. Your browser recomputes the public chain and the anchor log
+      and tells you exactly where it fits — or proves that history was
+      rewritten.
+    </p>
+    <div class="row">
+      <input type="text" id="hashin" placeholder="64 hex characters, e.g. 15c8c04a7fe4d3a7…" style="max-width:560px">
+      <button class="btn ghost" id="hashcheck">CHECK IN YOUR BROWSER</button>
+      <span class="muted small" id="hashstat"></span>
+    </div>
+    <div id="hashout"></div>
   </div>
 </section>
 
@@ -371,6 +389,58 @@ $("runsuite").onclick = async () => {
     info.textContent = "Production chain not reachable right now.";
   }
 })();
+
+// Check-a-hash: locate any head hash in the public chain AND the public
+// anchor log — four honest outcomes, computed in the visitor's browser.
+$("hashcheck").onclick = async () => {
+  const stat = $("hashstat"), out = $("hashout");
+  out.innerHTML = ""; stat.textContent = "";
+  const q = $("hashin").value.trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(q)) { stat.textContent = "expected 64 hex characters (a SHA-256 hash)"; return; }
+  stat.textContent = "recomputing chain + reading public anchors…";
+  try {
+    const [full, logText] = await Promise.all([
+      fetch("https://app.tickwire.news/api/sourced?full=1").then((r) => r.json()),
+      fetch("https://raw.githubusercontent.com/Ryan-hasi/sourced/main/anchors/tickwire.log")
+        .then((r) => (r.ok ? r.text() : "")).catch(() => ""),
+    ]);
+    const records = full.records ?? [];
+    const v = await verifyLocally(records);
+    const idx = records.findIndex((r) => r.hash === q);
+    const anchorLines = logText.split(/\r?\n/).filter((l) => l.includes(q));
+    stat.textContent = "";
+    const card = document.createElement("div");
+    card.className = "card";
+    let html = "";
+    if (idx >= 0 && anchorLines.length > 0) {
+      html = '<span class="badge ok" style="margin-left:0">IN THE CHAIN · PUBLICLY ANCHORED</span>' +
+        '<p class="small" style="margin-top:10px">This hash is the chain state at <strong>seq ' + idx + "</strong>, appended " +
+        esc(new Date(records[idx].ts).toISOString().replace("T", " ").slice(0, 16)) + " UTC. It commits to every record before it; " +
+        (records.length - 1 - idx) + " record(s) have extended it since. Recomputed here: " +
+        (v.rows[idx]?.hashOk ? '<span style="color:var(--ok)">hash checks out ✓</span>' : '<span style="color:var(--signal)">recompute FAILED ✗</span>') + "</p>" +
+        '<p class="small" style="font-family:var(--mono);font-size:11.5px;color:var(--dim)">anchored in public git history:<br>' +
+        anchorLines.map((l) => esc(l)).join("<br>") + "</p>";
+    } else if (idx >= 0) {
+      html = '<span class="badge developing" style="margin-left:0">IN THE CHAIN · NOT YET ANCHORED</span>' +
+        '<p class="small" style="margin-top:10px">Chain state at <strong>seq ' + idx + "</strong>, appended " +
+        esc(new Date(records[idx].ts).toISOString().replace("T", " ").slice(0, 16)) + " UTC — recomputed here " +
+        (v.rows[idx]?.hashOk ? "✓" : "✗") + ". The anchor job runs daily; until it lands in " +
+        '<a href="https://github.com/Ryan-hasi/sourced/blob/main/anchors/tickwire.log">the public log</a>, this state is chained but not yet externally anchored.</p>';
+    } else if (anchorLines.length > 0) {
+      html = '<span class="badge fail" style="margin-left:0">ANCHORED — BUT MISSING FROM THE CHAIN</span>' +
+        '<p class="small" style="margin-top:10px"><strong>This is exactly what tampering looks like.</strong> The hash was publicly anchored — ' +
+        "but the chain served today does not contain it. Either the operator rewrote history after anchoring, or is serving a different chain. The anchor makes that undeniable:</p>" +
+        '<p class="small" style="font-family:var(--mono);font-size:11.5px;color:var(--dim)">' + anchorLines.map((l) => esc(l)).join("<br>") + "</p>";
+    } else {
+      html = '<span class="badge" style="margin-left:0">NOT FOUND</span>' +
+        '<p class="small" style="margin-top:10px">This hash is neither in the current chain (' + records.length +
+        " records recomputed here) nor in the public anchor log. Honest answer: we can say nothing about it — " +
+        "it may belong to another chain, a future state, or nothing at all. No verdict without receipts.</p>";
+    }
+    card.innerHTML = html;
+    out.appendChild(card);
+  } catch (e) { stat.textContent = "failed: " + e; }
+};
 
 $("verifybtn").onclick = async () => {
   const stat = $("vstat"), box = $("vout");
