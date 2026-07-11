@@ -1,6 +1,6 @@
 {
   "name": "@sourcedhq/core",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "The corroboration primitive: how many independent sources corroborate a claim, since when, with receipts. Never 'true' — always 'sourced'.",
   "type": "module",
   "main": "./dist/index.js",
