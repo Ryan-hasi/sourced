@@ -33,7 +33,8 @@ export function clientIp(req) {
 /**
  * Resolve the caller: `{ tier, id, sk?, meta? }` or `{ error, status }`.
  * A syntactically present but unknown/revoked key is a hard 401 — silently
- * downgrading a paying caller to anonymous would be dishonest.
+ * downgrading a keyed caller to anonymous would be dishonest —
+ * they were promised memory.
  */
 export async function resolveCaller(req) {
   const auth = req.headers["authorization"] || "";
