@@ -92,6 +92,10 @@ clustering and the storage, keep the counting and the guarantees:
 npm run build && node examples/outage/run.mjs
 # one flaky probe stays bare · repeat reports collapse ·
 # 4 independent monitors → CONFIRMED, with receipts
+
+npm run build && node examples/moderation/run.mjs
+# one user flag → queue · AI confirms → DEVELOPING ·
+# 2 human moderators agree → 4 flags = CONFIRMED, auto-action
 ```
 
 News, outage detection, OSINT, sensor fusion, moderation queues — anywhere
@@ -114,7 +118,8 @@ app is a Sourced verdict, receipts included.
 ## Status & license
 
 Early, honest, moving. The spec is stable (the guarantees are the contract);
-the API may still sharpen before 1.0.
+the API is frozen at v1. See [docs/API-GUIDE.md](docs/API-GUIDE.md) for
+integration.
 
 **License: MIT** for all code (see LICENSE). The **Sourced name and mark are
 reserved** — forks welcome, under their own name (see TRADEMARK-POLICY.md).

@@ -14,7 +14,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run typecheck
       - run: npm run build
       - run: npm test
       # The engine must pass its own yardstick — this job IS the honesty claim.
       - run: node examples/outage/run.mjs
+      - run: node examples/moderation/run.mjs
