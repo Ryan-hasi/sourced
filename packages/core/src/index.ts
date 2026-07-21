@@ -105,7 +105,7 @@ export type Config = {
   stopwords: ReadonlySet<string>;
 };
 
-// Stopwords (EN + DE) — carry no event identity.
+// Stopwords (EN + DE + FR) — carry no event identity.
 const STOP: ReadonlySet<string> = new Set([
   "the", "a", "an", "and", "or", "but", "of", "to", "in", "on", "at", "for",
   "with", "as", "by", "from", "into", "over", "after", "before", "is", "are",
@@ -114,6 +114,11 @@ const STOP: ReadonlySet<string> = new Set([
   "der", "die", "das", "und", "oder", "von", "zu", "im", "auf", "mit",
   "für", "den", "dem", "des", "ein", "eine", "ist", "sind", "war", "wird",
   "nach", "vor", "über", "als", "sich", "auch", "bei", "aus", "wie", "mehr",
+  "le", "la", "les", "un", "une", "des", "du", "de", "à", "au", "aux",
+  "et", "ou", "mais", "donc", "car", "ni", "avec", "sur", "dans", "pour",
+  "par", "est", "sont", "ont", "fait", "être", "avoir", "nous", "vous",
+  "ils", "elles", "ce", "cet", "cette", "ces", "qui", "que", "dont", "où",
+  "plus", "pas", "ne", "sans", "tout", "tous", "toute", "toutes",
 ]);
 
 /**
