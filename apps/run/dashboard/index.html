@@ -109,16 +109,7 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"></script>
-  <script>
-    // Debug: log what Clerk exposes on window
-    document.addEventListener('DOMContentLoaded', function() {
-      var d = document.getElementById('clerk-debug');
-      if (d && window.Clerk) {
-        d.textContent = 'Clerk SDK loaded. Keys: ' + Object.keys(window.Clerk).join(', ');
-      }
-    });
-  </script>
-  <script src="/dashboard/dashboard.js?v=2"></script>
+  <script src="/dashboard/clerk/clerk.browser.js"></script>
+  <script src="/dashboard/dashboard.js?v=3"></script>
 </body>
 </html>
