@@ -212,29 +212,35 @@ function esc(s) {
 }
 
 // ── Clerk init ───────────────────────────────────────────────────────────
-window.Clerk = window.Clerk || {};
-window.Clerk.load = async function () {
-  const Clerk = window.Clerk;
-  await Clerk.load({ publishableKey: PUBLISHABLE_KEY });
+(async function initClerk() {
+  try {
+    if (!window.Clerk || typeof window.Clerk.load !== "function") {
+      document.getElementById("auth-container").innerHTML =
+        '<p style="color:#f87171;">Clerk SDK failed to load. Check your connection or ad-blocker.</p>';
+      return;
+    }
 
-  Clerk.addListener(({ session }) => {
-    if (session) {
-      refreshSession().then(showDashboard);
+    await window.Clerk.load({ publishableKey: PUBLISHABLE_KEY });
+
+    window.Clerk.addListener(({ session }) => {
+      if (session) {
+        refreshSession().then(showDashboard);
+      } else {
+        showAuth();
+      }
+    });
+
+    if (window.Clerk.session) {
+      await refreshSession();
+      showDashboard();
+      window.Clerk.mountUserButton(document.getElementById("user-button"));
     } else {
       showAuth();
+      window.Clerk.mountSignIn(document.getElementById("auth-container"));
     }
-  });
-
-  if (Clerk.session) {
-    await refreshSession();
-    showDashboard();
-    Clerk.mountUserButton(document.getElementById("user-button"));
-  } else {
-    showAuth();
-    Clerk.mountSignIn(document.getElementById("auth-container"));
+  } catch (err) {
+    console.error("Clerk init error:", err);
+    document.getElementById("auth-container").innerHTML =
+      `<p style="color:#f87171;">Authentication error: ${esc(err.message || err)}</p>`;
   }
-};
-
-if (window.Clerk && window.Clerk.load) {
-  window.Clerk.load();
-}
+})();
