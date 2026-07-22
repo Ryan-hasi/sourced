@@ -252,8 +252,10 @@ async function loadAudit() {
       return;
     }
 
-    setDebug("Initializing Clerk…");
+    setDebug("Initializing Clerk… (keys: " + Object.keys(window.Clerk).join(", ") + ")");
     const ClerkClass = window.Clerk.Clerk || window.Clerk;
+    setDebug("ClerkClass type: " + typeof ClerkClass);
+
     clerk = new ClerkClass(PUBLISHABLE_KEY);
 
     setDebug("Loading Clerk (may take a few seconds)…");
