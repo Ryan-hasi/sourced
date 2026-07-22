@@ -253,7 +253,8 @@ async function loadAudit() {
     }
 
     setDebug("Initializing Clerk…");
-    clerk = new window.Clerk(PUBLISHABLE_KEY);
+    const ClerkClass = window.Clerk.Clerk || window.Clerk;
+    clerk = new ClerkClass(PUBLISHABLE_KEY);
 
     setDebug("Loading Clerk (may take a few seconds)…");
     const loadPromise = clerk.load();
