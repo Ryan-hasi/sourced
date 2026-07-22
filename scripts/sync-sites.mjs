@@ -8,7 +8,7 @@
  *   apps/run/api/_core.mjs
  *   apps/network/api/_core.mjs
  *   apps/network/api/_log.mjs          (file-storage re-export stripped)
- *   apps/network/api/_conformance.mjs  (import rewritten to ./_core.mjs)
+ *   apps/network/api/_conformance.mjs  (import rewritten to ./_core.mjs, badge inlined)
  *   apps/{ink,run,network}/style.css   (from shared/site.css)
  */
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -35,7 +35,10 @@ const log = banner + read("packages/log/dist/index.js").replace(/^export \{[^}]*
 write("apps/network/api/_log.mjs", log);
 write("apps/run/api/_log.mjs", log);
 
-const conformance = banner + read("packages/conformance/dist/index.js").replaceAll('"@sourcedhq/core"', '"./_core.mjs"');
+// conformance + badge inlined (badge.js is a sibling module)
+const badgeCode = read("packages/conformance/dist/badge.js");
+const conformanceIndex = read("packages/conformance/dist/index.js");
+const conformance = banner + badgeCode + "\n" + conformanceIndex.replaceAll('"@sourcedhq/core"', '"./_core.mjs"').replace(/^export \{[^}]*\} from "\.\/badge\.js";\r?\n/m, "");
 write("apps/network/api/_conformance.mjs", conformance);
 
 for (const app of ["ink", "run", "network"]) {

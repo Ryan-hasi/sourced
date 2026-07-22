@@ -343,3 +343,5 @@ export async function runConformance(assess: AssessFn = coreAssess): Promise<Sui
     results,
   };
 }
+
+export { badge, score } from "./badge.js";

@@ -3,6 +3,8 @@
   "references": [
     { "path": "packages/core" },
     { "path": "packages/log" },
+    { "path": "packages/archive" },
+    { "path": "packages/anchor" },
     { "path": "packages/conformance" },
     { "path": "packages/mcp" }
   ]

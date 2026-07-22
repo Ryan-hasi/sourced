@@ -15,6 +15,17 @@
  * conscious act, not a knob to fiddle.
  */
 
+export {
+  type IndependenceMap,
+  type IndependenceGroup,
+  type IndependenceRelation,
+  resolveOrigin,
+  deduplicateOrigins,
+  SEED_INDEPENDENCE_MAP,
+} from "./independence.js";
+
+import { resolveOrigin, type IndependenceMap } from "./independence.js";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -144,6 +155,12 @@ export type AssessOptions = {
   /** Injected clock (epoch ms) — deterministic runs, testable. */
   now?: number;
   config?: Partial<Config>;
+  /**
+   * Curated map of media ownership/syndication relationships (G3).
+   * Without it, every distinct origin string counts as independent.
+   * With it, origins sharing ownership/syndication collapse to one unit.
+   */
+  independenceMap?: IndependenceMap;
 };
 
 /** The full signature of the primitive — what conformance suites target. */
@@ -297,13 +314,31 @@ async function assessInner(
       known.push({ ev, tokens: tokenSet }); // later claims in batch can match
     }
 
-    // Corroboration = distinct origins (this batch ∪ history).
-    const corro = ev.origins.length;
+    // Corroboration = distinct INDEPENDENT origins (G3). The independence
+    // map collapses origins sharing ownership/syndication into one unit.
+    // Without a map, every distinct string is assumed independent.
+    const imap = options.independenceMap;
+    const resolved = new Set(
+      ev.origins.map((o) => resolveOrigin(o, imap)),
+    );
+    const corro = resolved.size;
 
     // Receipts (G4): who else — never the claim's own origin, capped.
+    // Show original names (not canonicals) so the reader recognises them.
+    const ownCanonical = resolveOrigin(claim.origin, imap);
     const receipts =
       corro > 1
-        ? ev.origins.filter((s) => s !== claim.origin).slice(0, cfg.receiptsCap)
+        ? ev.origins
+            .filter((s) => resolveOrigin(s, imap) !== ownCanonical)
+            .filter(
+              ((seen) => (s: string) => {
+                const c = resolveOrigin(s, imap);
+                if (seen.has(c)) return false;
+                seen.add(c);
+                return true;
+              })(new Set<string>()),
+            )
+            .slice(0, cfg.receiptsCap)
         : [];
 
     // Signal rides the RELIABLE clock (G6): the upstream publish time, never

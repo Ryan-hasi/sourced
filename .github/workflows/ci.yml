@@ -20,3 +20,4 @@ jobs:
       # The engine must pass its own yardstick — this job IS the honesty claim.
       - run: node examples/outage/run.mjs
       - run: node examples/moderation/run.mjs
+      - run: node examples/osint/run.mjs

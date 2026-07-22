@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sourced — Dashboard</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .dash-layout { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+    .dash-header h1 { font-size: 1.25rem; margin: 0; }
+    .dash-nav { display: flex; gap: 0.25rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+    .dash-nav button { background: none; border: none; color: var(--text-muted); padding: 0.75rem 1rem; cursor: pointer; font-family: inherit; font-size: 0.875rem; border-bottom: 2px solid transparent; transition: all 0.15s; }
+    .dash-nav button:hover { color: var(--text); }
+    .dash-nav button.active { color: var(--text); border-bottom-color: var(--signal-red, #d4111e); }
+    .dash-section { display: none; }
+    .dash-section.active { display: block; }
+    .card { background: var(--bg-card, rgba(255,255,255,0.03)); border: 1px solid var(--border); border-radius: 6px; padding: 1.25rem; margin-bottom: 1rem; }
+    .card h3 { margin: 0 0 0.75rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--bg-card, rgba(255,255,255,0.03)); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; text-align: center; }
+    .stat-card .value { font-size: 2rem; font-weight: 700; font-family: var(--font-mono); }
+    .stat-card .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-top: 0.25rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 500; font-size: 0.75rem; text-transform: uppercase; }
+    td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border, rgba(255,255,255,0.06)); font-family: var(--font-mono); font-size: 0.8rem; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 3px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+    .badge-active { background: #1a4d2e; color: #4ade80; }
+    .badge-disabled { background: #4d1a1a; color: #f87171; }
+    .badge-ok { background: #1a4d2e; color: #4ade80; }
+    .badge-err { background: #4d1a1a; color: #f87171; }
+    .btn { padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-card, rgba(255,255,255,0.05)); color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.8rem; transition: background 0.15s; }
+    .btn:hover { background: rgba(255,255,255,0.1); }
+    .btn-danger { border-color: #f87171; color: #f87171; }
+    .btn-danger:hover { background: rgba(248,113,113,0.1); }
+    .form-row { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .form-row input { flex: 1; padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); font-family: var(--font-mono); font-size: 0.875rem; }
+    #auth-container { display: flex; justify-content: center; align-items: center; min-height: 60vh; }
+    #dashboard-container { display: none; }
+    .loading { color: var(--text-muted); font-style: italic; }
+    .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--bg-card, #1a1a1a); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem 1rem; font-size: 0.875rem; z-index: 1000; opacity: 0; transition: opacity 0.3s; }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="auth-container"></div>
+
+  <div id="dashboard-container" class="dash-layout">
+    <header class="dash-header">
+      <h1>Sourced Dashboard</h1>
+      <div id="user-button"></div>
+    </header>
+
+    <nav class="dash-nav">
+      <button class="active" data-tab="keys">Keys</button>
+      <button data-tab="chains">Chains</button>
+      <button data-tab="stats">Stats</button>
+      <button data-tab="audit">Audit</button>
+    </nav>
+
+    <section id="tab-keys" class="dash-section active">
+      <div class="card">
+        <h3>Create Key</h3>
+        <div class="form-row">
+          <input id="new-key-name" placeholder="Key name (e.g. partner-x)" />
+          <button class="btn" onclick="createKey()">Create</button>
+        </div>
+        <div id="new-key-result"></div>
+      </div>
+      <div class="card">
+        <h3>Active Keys</h3>
+        <table>
+          <thead><tr><th>Key</th><th>Name</th><th>Status</th><th>Created</th><th>Chain ID</th><th></th></tr></thead>
+          <tbody id="keys-table"><tr><td colspan="6" class="loading">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-chains" class="dash-section">
+      <div class="card">
+        <h3>Hosted Chains</h3>
+        <table>
+          <thead><tr><th>Chain ID</th><th>Name</th><th>Seq</th><th>Head</th><th>Last Update</th></tr></thead>
+          <tbody id="chains-table"><tr><td colspan="5" class="loading">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-stats" class="dash-section">
+      <div id="stats-content"><p class="loading">Loading…</p></div>
+    </section>
+
+    <section id="tab-audit" class="dash-section">
+      <div class="card">
+        <h3>Admin Actions</h3>
+        <table>
+          <thead><tr><th>Time</th><th>Action</th><th>Key</th><th>Detail</th><th>IP</th></tr></thead>
+          <tbody id="audit-table"><tr><td colspan="5" class="loading">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"></script>
+  <script src="/dashboard.js"></script>
+</body>
+</html>

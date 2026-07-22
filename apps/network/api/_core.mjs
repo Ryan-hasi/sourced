@@ -15,7 +15,9 @@
  * encode the undercount-never-overcount tuning. Loosening them is a
  * conscious act, not a knob to fiddle.
  */
-// Stopwords (EN + DE) — carry no event identity.
+export { resolveOrigin, deduplicateOrigins, SEED_INDEPENDENCE_MAP, } from "./independence.js";
+import { resolveOrigin } from "./independence.js";
+// Stopwords (EN + DE + FR) — carry no event identity.
 const STOP = new Set([
     "the", "a", "an", "and", "or", "but", "of", "to", "in", "on", "at", "for",
     "with", "as", "by", "from", "into", "over", "after", "before", "is", "are",
@@ -24,6 +26,11 @@ const STOP = new Set([
     "der", "die", "das", "und", "oder", "von", "zu", "im", "auf", "mit",
     "für", "den", "dem", "des", "ein", "eine", "ist", "sind", "war", "wird",
     "nach", "vor", "über", "als", "sich", "auch", "bei", "aus", "wie", "mehr",
+    "le", "la", "les", "un", "une", "des", "du", "de", "à", "au", "aux",
+    "et", "ou", "mais", "donc", "car", "ni", "avec", "sur", "dans", "pour",
+    "par", "est", "sont", "ont", "fait", "être", "avoir", "nous", "vous",
+    "ils", "elles", "ce", "cet", "cette", "ces", "qui", "que", "dont", "où",
+    "plus", "pas", "ne", "sans", "tout", "tous", "toute", "toutes",
 ]);
 /**
  * The default tuning IS the honesty contract (undercount, never overcount).
@@ -168,11 +175,26 @@ async function assessInner(claims, options) {
             store[k] = ev;
             known.push({ ev, tokens: tokenSet }); // later claims in batch can match
         }
-        // Corroboration = distinct origins (this batch ∪ history).
-        const corro = ev.origins.length;
+        // Corroboration = distinct INDEPENDENT origins (G3). The independence
+        // map collapses origins sharing ownership/syndication into one unit.
+        // Without a map, every distinct string is assumed independent.
+        const imap = options.independenceMap;
+        const resolved = new Set(ev.origins.map((o) => resolveOrigin(o, imap)));
+        const corro = resolved.size;
         // Receipts (G4): who else — never the claim's own origin, capped.
+        // Show original names (not canonicals) so the reader recognises them.
+        const ownCanonical = resolveOrigin(claim.origin, imap);
         const receipts = corro > 1
-            ? ev.origins.filter((s) => s !== claim.origin).slice(0, cfg.receiptsCap)
+            ? ev.origins
+                .filter((s) => resolveOrigin(s, imap) !== ownCanonical)
+                .filter(((seen) => (s) => {
+                const c = resolveOrigin(s, imap);
+                if (seen.has(c))
+                    return false;
+                seen.add(c);
+                return true;
+            })(new Set()))
+                .slice(0, cfg.receiptsCap)
             : [];
         // Signal rides the RELIABLE clock (G6): the upstream publish time, never
         // our own first-seen guess — a matching error can shift a count but can

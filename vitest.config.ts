@@ -9,6 +9,8 @@ export default defineConfig({
     alias: {
       "@sourcedhq/core": p("./packages/core/src/index.ts"),
       "@sourcedhq/log": p("./packages/log/src/index.ts"),
+      "@sourcedhq/archive": p("./packages/archive/src/index.ts"),
+      "@sourcedhq/anchor": p("./packages/anchor/src/index.ts"),
       "@sourcedhq/conformance": p("./packages/conformance/src/index.ts"),
       "@sourcedhq/mcp": p("./packages/mcp/src/index.ts"),
     },
