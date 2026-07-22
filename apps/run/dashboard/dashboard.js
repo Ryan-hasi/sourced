@@ -1,20 +1,14 @@
 /**
- * Sourced Dashboard — Clerk-authenticated admin interface.
- * Uses Account Portal (accounts.sourced.run) for auth.
+ * Sourced Dashboard — no Clerk SDK needed.
+ * Session check via server-side /api/dashboard/session endpoint.
+ * Auth via Clerk Account Portal redirect.
  */
 
-const PUBLISHABLE_KEY = "pk_test_ZnJlc2gtcmF0dGxlci05MC5jbGVyay5hY2NvdW50cy5kZXYk";
 const API_BASE = window.location.origin;
+const SIGN_IN_URL = "https://accounts.sourced.run/sign-in";
+const SIGN_UP_URL = "https://accounts.sourced.run/sign-up";
 
-let clerk = null;
 let sessionToken = null;
-
-function showToast(msg, duration = 3000) {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), duration);
-}
 
 function esc(s) {
   if (s == null) return "";
@@ -23,10 +17,34 @@ function esc(s) {
   return d.innerHTML;
 }
 
+function showToast(msg, duration = 3000) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), duration);
+}
+
+async function checkSession() {
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/session`, {
+      credentials: "include",
+    });
+    const data = await res.json();
+    if (data.authenticated && data.token) {
+      sessionToken = data.token;
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 async function proxy(endpoint, body = {}) {
   if (!sessionToken) throw new Error("not authenticated");
   const res = await fetch(`${API_BASE}/api/dashboard/proxy`, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${sessionToken}`,
@@ -36,16 +54,6 @@ async function proxy(endpoint, body = {}) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
-}
-
-async function refreshSession() {
-  try {
-    if (clerk && clerk.session) {
-      sessionToken = await clerk.session.getToken();
-    }
-  } catch {
-    sessionToken = null;
-  }
 }
 
 function showDashboard() {
@@ -58,25 +66,21 @@ function showDashboard() {
 }
 
 function showAuth() {
-  document.getElementById("auth-container").style.display = "flex";
-  document.getElementById("auth-container").innerHTML =
-    '<div style="text-align:center;">' +
-    '<p style="margin-bottom:1rem;">Sign in to access the dashboard.</p>' +
-    '<button class="btn" onclick="signIn()" style="padding:0.6rem 1.5rem;font-size:1rem;">Sign In</button>' +
-    '</div>';
+  const redirectUrl = encodeURIComponent(window.location.href);
   document.getElementById("dashboard-container").style.display = "none";
-}
-
-function signIn() {
-  if (clerk) {
-    clerk.redirectToSignIn();
-  }
+  document.getElementById("auth-container").style.display = "flex";
+  document.getElementById("auth-container").innerHTML = `
+    <div style="text-align:center;">
+      <h2 style="margin-bottom:0.5rem;font-size:1.5rem;">Sourced Dashboard</h2>
+      <p style="color:var(--text-muted);margin-bottom:1.5rem;">Sign in to manage API keys, chains, and view stats.</p>
+      <a href="${SIGN_IN_URL}?redirect_url=${redirectUrl}" class="btn" style="display:inline-block;padding:0.6rem 2rem;font-size:1rem;text-decoration:none;margin-right:0.5rem;">Sign In</a>
+      <a href="${SIGN_UP_URL}?redirect_url=${redirectUrl}" class="btn" style="display:inline-block;padding:0.6rem 2rem;font-size:1rem;text-decoration:none;border-color:var(--signal-red,#d4111e);color:var(--signal-red,#d4111e);">Sign Up</a>
+    </div>
+  `;
 }
 
 function signOut() {
-  if (clerk) {
-    clerk.signOut();
-  }
+  window.location.href = `https://accounts.sourced.run/sign-out?redirect_url=${encodeURIComponent(window.location.href)}`;
 }
 
 // ── Tab navigation ──────────────────────────────────────────────────────
@@ -135,29 +139,19 @@ async function createKey() {
 
 async function disableKey(keyMasked) {
   if (!confirm(`Disable ${keyMasked}?`)) return;
-  try {
-    await proxy("keys", { action: "disable", key: keyMasked });
-    loadKeys();
-    showToast("Key disabled");
-  } catch (err) { showToast(`Error: ${err.message}`); }
+  try { await proxy("keys", { action: "disable", key: keyMasked }); loadKeys(); showToast("Key disabled"); }
+  catch (err) { showToast(`Error: ${err.message}`); }
 }
 
 async function enableKey(keyMasked) {
-  try {
-    await proxy("keys", { action: "enable", key: keyMasked });
-    loadKeys();
-    showToast("Key enabled");
-  } catch (err) { showToast(`Error: ${err.message}`); }
+  try { await proxy("keys", { action: "enable", key: keyMasked }); loadKeys(); showToast("Key enabled"); }
+  catch (err) { showToast(`Error: ${err.message}`); }
 }
 
 async function revokeKey(keyMasked) {
   if (!confirm(`Permanently revoke ${keyMasked}? This cannot be undone.`)) return;
-  try {
-    await proxy("keys", { action: "revoke", key: keyMasked });
-    loadKeys();
-    loadAudit();
-    showToast("Key revoked");
-  } catch (err) { showToast(`Error: ${err.message}`); }
+  try { await proxy("keys", { action: "revoke", key: keyMasked }); loadKeys(); loadAudit(); showToast("Key revoked"); }
+  catch (err) { showToast(`Error: ${err.message}`); }
 }
 
 // ── Chains ───────────────────────────────────────────────────────────────
@@ -187,8 +181,7 @@ async function loadChains() {
 async function loadStats() {
   try {
     const data = await proxy("stats");
-    const el = document.getElementById("stats-content");
-    el.innerHTML = `
+    document.getElementById("stats-content").innerHTML = `
       <div class="stat-grid">
         <div class="stat-card"><div class="value">${data.keys.total}</div><div class="label">Total Keys</div></div>
         <div class="stat-card"><div class="value">${data.keys.active}</div><div class="label">Active</div></div>
@@ -227,69 +220,12 @@ async function loadAudit() {
   }
 }
 
-// ── Clerk init ───────────────────────────────────────────────────────────
-(async function initClerk() {
-  const authContainer = document.getElementById("auth-container");
-  const debug = document.getElementById("clerk-debug");
-
-  function setDebug(msg) { if (debug) debug.textContent = msg; }
-
-  try {
-    setDebug("Waiting for Clerk SDK…");
-
-    let waited = 0;
-    while (!window.Clerk && waited < 10_000) {
-      await new Promise((r) => setTimeout(r, 200));
-      waited += 200;
-    }
-
-    if (!window.Clerk) {
-      authContainer.innerHTML =
-        '<div style="text-align:center;">' +
-        '<p style="color:#f87171;">Clerk SDK failed to load.</p>' +
-        '<p style="color:var(--text-muted);font-size:0.8rem;">Check your connection, ad-blocker, or try refreshing.</p>' +
-        '</div>';
-      return;
-    }
-
-    setDebug("Initializing Clerk… (keys: " + Object.keys(window.Clerk).join(", ") + ")");
-    const ClerkClass = window.Clerk.Clerk || window.Clerk;
-    setDebug("ClerkClass type: " + typeof ClerkClass);
-
-    clerk = new ClerkClass(PUBLISHABLE_KEY);
-
-    setDebug("Loading Clerk (may take a few seconds)…");
-    const loadPromise = clerk.load();
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Clerk.load() timed out after 15s")), 15_000),
-    );
-
-    await Promise.race([loadPromise, timeoutPromise]);
-
-    setDebug("Clerk loaded. Checking session…");
-
-    clerk.addListener(({ session }) => {
-      if (session) {
-        refreshSession().then(showDashboard);
-      } else {
-        showAuth();
-      }
-    });
-
-    if (clerk.session) {
-      await refreshSession();
-      showDashboard();
-    } else {
-      showAuth();
-    }
-  } catch (err) {
-    console.error("Clerk init error:", err);
-    setDebug("");
-    authContainer.innerHTML =
-      '<div style="text-align:center;">' +
-      `<p style="color:#f87171;">Authentication error: ${esc(err.message || String(err))}</p>` +
-      '<p style="color:var(--text-muted);font-size:0.8rem;margin-top:0.5rem;">Try refreshing the page. If the problem persists, check the browser console.</p>' +
-      '<button class="btn" style="margin-top:1rem;" onclick="location.reload()">Reload</button>' +
-      '</div>';
+// ── Init ─────────────────────────────────────────────────────────────────
+(async function init() {
+  const isAuth = await checkSession();
+  if (isAuth) {
+    showDashboard();
+  } else {
+    showAuth();
   }
 })();
