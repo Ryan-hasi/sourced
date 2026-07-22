@@ -11,7 +11,7 @@
  *   apps/network/api/_conformance.mjs  (import rewritten to ./_core.mjs, badge inlined)
  *   apps/{ink,run,network}/style.css   (from shared/site.css)
  */
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -47,4 +47,11 @@ for (const app of ["ink", "run", "network"]) {
   copyFileSync(join(root, "shared/site.css"), join(root, `apps/${app}/style.css`));
   copyFileSync(join(root, "shared/site.js"), join(root, `apps/${app}/site.js`));
   console.log(`synced apps/${app}/style.css + site.js`);
+}
+
+const clerkDist = join(root, "node_modules/@clerk/clerk-js/dist");
+const clerkTarget = join(root, "apps/run/dashboard/clerk");
+if (existsSync(clerkDist)) {
+  cpSync(clerkDist, clerkTarget, { recursive: true });
+  console.log("synced apps/run/dashboard/clerk/ (Clerk JS SDK)");
 }
