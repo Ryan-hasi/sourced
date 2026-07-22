@@ -230,16 +230,40 @@ async function loadAudit() {
 // ── Clerk init ───────────────────────────────────────────────────────────
 (async function initClerk() {
   const authContainer = document.getElementById("auth-container");
+  const debug = document.getElementById("clerk-debug");
+
+  function setDebug(msg) { if (debug) debug.textContent = msg; }
 
   try {
+    setDebug("Waiting for Clerk SDK…");
+
+    let waited = 0;
+    while (!window.Clerk && waited < 10_000) {
+      await new Promise((r) => setTimeout(r, 200));
+      waited += 200;
+    }
+
     if (!window.Clerk) {
       authContainer.innerHTML =
-        '<p style="color:#f87171;">Clerk SDK not loaded. Check your connection or ad-blocker.</p>';
+        '<div style="text-align:center;">' +
+        '<p style="color:#f87171;">Clerk SDK failed to load.</p>' +
+        '<p style="color:var(--text-muted);font-size:0.8rem;">Check your connection, ad-blocker, or try refreshing.</p>' +
+        '</div>';
       return;
     }
 
+    setDebug("Initializing Clerk…");
     clerk = new window.Clerk(PUBLISHABLE_KEY);
-    await clerk.load();
+
+    setDebug("Loading Clerk (may take a few seconds)…");
+    const loadPromise = clerk.load();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Clerk.load() timed out after 15s")), 15_000),
+    );
+
+    await Promise.race([loadPromise, timeoutPromise]);
+
+    setDebug("Clerk loaded. Checking session…");
 
     clerk.addListener(({ session }) => {
       if (session) {
@@ -257,7 +281,12 @@ async function loadAudit() {
     }
   } catch (err) {
     console.error("Clerk init error:", err);
+    setDebug("");
     authContainer.innerHTML =
-      `<p style="color:#f87171;">Authentication error: ${esc(err.message || String(err))}</p>`;
+      '<div style="text-align:center;">' +
+      `<p style="color:#f87171;">Authentication error: ${esc(err.message || String(err))}</p>` +
+      '<p style="color:var(--text-muted);font-size:0.8rem;margin-top:0.5rem;">Try refreshing the page. If the problem persists, check the browser console.</p>' +
+      '<button class="btn" style="margin-top:1rem;" onclick="location.reload()">Reload</button>' +
+      '</div>';
   }
 })();

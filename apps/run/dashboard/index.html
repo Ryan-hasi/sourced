@@ -44,7 +44,12 @@
   </style>
 </head>
 <body>
-  <div id="auth-container"></div>
+  <div id="auth-container">
+    <div style="text-align:center;color:var(--text-muted,#888);">
+      <p>Loading authentication…</p>
+      <p id="clerk-debug" style="font-size:0.75rem;opacity:0.5;margin-top:1rem;"></p>
+    </div>
+  </div>
 
   <div id="dashboard-container" class="dash-layout">
     <header class="dash-header">
