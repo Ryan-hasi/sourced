@@ -1,11 +1,12 @@
 /**
  * Sourced Dashboard — Clerk-authenticated admin interface.
- * Authenticates via Clerk, proxies admin requests through /api/dashboard/proxy.
+ * Uses Account Portal (accounts.sourced.run) for auth.
  */
 
 const PUBLISHABLE_KEY = "pk_test_ZnJlc2gtcmF0dGxlci05MC5jbGVyay5hY2NvdW50cy5kZXYk";
 const API_BASE = window.location.origin;
 
+let clerk = null;
 let sessionToken = null;
 
 function showToast(msg, duration = 3000) {
@@ -13,6 +14,13 @@ function showToast(msg, duration = 3000) {
   t.textContent = msg;
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), duration);
+}
+
+function esc(s) {
+  if (s == null) return "";
+  const d = document.createElement("div");
+  d.textContent = String(s);
+  return d.innerHTML;
 }
 
 async function proxy(endpoint, body = {}) {
@@ -32,9 +40,8 @@ async function proxy(endpoint, body = {}) {
 
 async function refreshSession() {
   try {
-    const session = window.Clerk.session;
-    if (session) {
-      sessionToken = await session.getToken();
+    if (clerk && clerk.session) {
+      sessionToken = await clerk.session.getToken();
     }
   } catch {
     sessionToken = null;
@@ -52,7 +59,24 @@ function showDashboard() {
 
 function showAuth() {
   document.getElementById("auth-container").style.display = "flex";
+  document.getElementById("auth-container").innerHTML =
+    '<div style="text-align:center;">' +
+    '<p style="margin-bottom:1rem;">Sign in to access the dashboard.</p>' +
+    '<button class="btn" onclick="signIn()" style="padding:0.6rem 1.5rem;font-size:1rem;">Sign In</button>' +
+    '</div>';
   document.getElementById("dashboard-container").style.display = "none";
+}
+
+function signIn() {
+  if (clerk) {
+    clerk.redirectToSignIn();
+  }
+}
+
+function signOut() {
+  if (clerk) {
+    clerk.signOut();
+  }
 }
 
 // ── Tab navigation ──────────────────────────────────────────────────────
@@ -203,26 +227,21 @@ async function loadAudit() {
   }
 }
 
-// ── Utilities ────────────────────────────────────────────────────────────
-function esc(s) {
-  if (s == null) return "";
-  const d = document.createElement("div");
-  d.textContent = String(s);
-  return d.innerHTML;
-}
-
 // ── Clerk init ───────────────────────────────────────────────────────────
 (async function initClerk() {
+  const authContainer = document.getElementById("auth-container");
+
   try {
-    if (!window.Clerk || typeof window.Clerk.load !== "function") {
-      document.getElementById("auth-container").innerHTML =
-        '<p style="color:#f87171;">Clerk SDK failed to load. Check your connection or ad-blocker.</p>';
+    if (!window.Clerk) {
+      authContainer.innerHTML =
+        '<p style="color:#f87171;">Clerk SDK not loaded. Check your connection or ad-blocker.</p>';
       return;
     }
 
-    await window.Clerk.load({ publishableKey: PUBLISHABLE_KEY });
+    clerk = new window.Clerk(PUBLISHABLE_KEY);
+    await clerk.load();
 
-    window.Clerk.addListener(({ session }) => {
+    clerk.addListener(({ session }) => {
       if (session) {
         refreshSession().then(showDashboard);
       } else {
@@ -230,17 +249,15 @@ function esc(s) {
       }
     });
 
-    if (window.Clerk.session) {
+    if (clerk.session) {
       await refreshSession();
       showDashboard();
-      window.Clerk.mountUserButton(document.getElementById("user-button"));
     } else {
       showAuth();
-      window.Clerk.mountSignIn(document.getElementById("auth-container"));
     }
   } catch (err) {
     console.error("Clerk init error:", err);
-    document.getElementById("auth-container").innerHTML =
-      `<p style="color:#f87171;">Authentication error: ${esc(err.message || err)}</p>`;
+    authContainer.innerHTML =
+      `<p style="color:#f87171;">Authentication error: ${esc(err.message || String(err))}</p>`;
   }
 })();
