@@ -1,7 +1,7 @@
 {
-  "name": "@sourcedhq/conformance",
-  "version": "1.1.0",
-  "description": "The Sourced honesty guarantees (G1–G7) as an executable, adversarial conformance suite — point it at any corroboration engine.",
+  "name": "@sourcedhq/anchor",
+  "version": "1.0.0",
+  "description": "Public timestamp anchoring for Sourced — submits chain heads to OpenTimestamps calendar servers for unfakeable proof of existence.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -10,6 +10,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
+  },
+  "bin": {
+    "sourced-anchor-ts": "./dist/cli.js"
   },
   "files": [
     "dist",
@@ -20,8 +23,15 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@sourcedhq/core": "^1.0.0"
+    "@sourcedhq/log": "1.0.0"
   },
+  "keywords": [
+    "timestamp",
+    "anchoring",
+    "opentimestamps",
+    "blockchain",
+    "sourced"
+  ],
   "license": "MIT",
   "homepage": "https://sourced.ink",
   "engines": {
@@ -30,6 +40,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Ryan-hasi/sourced.git",
-    "directory": "packages/conformance"
+    "directory": "packages/anchor"
   }
 }
