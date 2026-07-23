@@ -26,33 +26,51 @@ function copyToClipboard(text, label = "Copied") {
   navigator.clipboard.writeText(text).then(() => showToast(`${label} to clipboard!`)).catch(() => showToast("Failed to copy"));
 }
 
-async function loadClerkSDK(key) {
+let clerkPromise = null;
+let isInitializingPage = true;
+let isAuthListenerAttached = false;
+
+async function getClerk() {
   if (window.Clerk && window.Clerk.isReady) return window.Clerk;
-  if (!key) return null;
-  return new Promise((resolve) => {
+  if (clerkPromise) return clerkPromise;
+
+  clerkPromise = new Promise(async (resolve) => {
+    if (!clerkPublishableKey) {
+      try {
+        const res = await fetch(`${API_BASE}/api/dashboard/session`);
+        const data = await res.json();
+        if (data.publishableKey) clerkPublishableKey = data.publishableKey;
+      } catch (e) {
+        console.warn("Session check for key failed:", e);
+      }
+    }
+    if (!clerkPublishableKey) {
+      clerkPublishableKey = "pk_live_Y2xlcmsudGlja3dpcmUubmV3cyQ";
+    }
+
+    if (window.Clerk) {
+      if (!window.Clerk.isReady) {
+        try { await window.Clerk.load({ publishableKey: clerkPublishableKey }); } catch (e) {}
+      }
+      return resolve(window.Clerk);
+    }
+
     const script = document.createElement("script");
-    script.setAttribute("data-clerk-publishable-key", key);
+    script.setAttribute("data-clerk-publishable-key", clerkPublishableKey);
     script.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
     script.async = true;
 
-    // Timeout safeguard so the page NEVER hangs on loading
-    const timer = setTimeout(() => {
-      resolve(window.Clerk || null);
-    }, 6000);
+    const timer = setTimeout(() => resolve(window.Clerk || null), 8000);
 
     script.onload = async () => {
       clearTimeout(timer);
       try {
-        if (window.Clerk) {
-          if (!window.Clerk.isReady) {
-            await window.Clerk.load();
-          }
-          resolve(window.Clerk);
-        } else {
-          resolve(null);
+        if (window.Clerk && !window.Clerk.isReady) {
+          await window.Clerk.load({ publishableKey: clerkPublishableKey });
         }
+        resolve(window.Clerk || null);
       } catch (err) {
-        console.warn("Clerk load failed:", err);
+        console.warn("Clerk load error:", err);
         resolve(null);
       }
     };
@@ -62,35 +80,15 @@ async function loadClerkSDK(key) {
     };
     document.head.appendChild(script);
   });
+
+  return clerkPromise;
 }
 
-async function checkSession() {
-  try {
-    const res = await fetch(`${API_BASE}/api/dashboard/session`);
-    const data = await res.json();
-    if (data.publishableKey) {
-      clerkPublishableKey = data.publishableKey;
-    }
-  } catch (err) {
-    console.warn("Session endpoint check failed:", err);
-  }
-
-  if (clerkPublishableKey) {
-    const clerk = await loadClerkSDK(clerkPublishableKey);
-    if (clerk && clerk.session) {
-      try {
-        sessionToken = await clerk.session.getToken();
-      } catch (e) {
-        console.warn("Failed to get Clerk session token:", e);
-      }
-    }
-  }
-
-  if (!sessionToken) return { status: "unauthenticated" };
-
+async function verifySessionToken(token) {
+  if (!token) return { status: "unauthenticated" };
   try {
     const res = await fetch(`${API_BASE}/api/dashboard/session`, {
-      headers: { "Authorization": `Bearer ${sessionToken}` },
+      headers: { "Authorization": `Bearer ${token}` },
     });
     const data = await res.json();
     if (res.status === 200 && data.authorized) {
@@ -102,7 +100,6 @@ async function checkSession() {
   } catch (err) {
     console.error("Server authorization check failed:", err);
   }
-
   return { status: "unauthenticated" };
 }
 
@@ -110,64 +107,74 @@ async function mountClerkSignIn() {
   const mountEl = document.getElementById("auth-mount");
   if (!mountEl) return;
 
-  const clerk = await loadClerkSDK(clerkPublishableKey);
-  if (clerk) {
-    mountEl.innerHTML = "";
+  const clerk = await getClerk();
+  if (!clerk) {
+    mountEl.innerHTML = '<div style="color:#f87171;padding:1rem;text-align:center;">Failed to load authentication service. Please refresh page.</div>';
+    return;
+  }
+
+  mountEl.innerHTML = "";
+
+  if (!isAuthListenerAttached) {
+    isAuthListenerAttached = true;
     clerk.addListener(async ({ session }) => {
-      if (session) {
+      if (session && !isInitializingPage) {
         try {
           sessionToken = await session.getToken();
           if (sessionToken) {
-            const authResult = await checkSession();
+            const authResult = await verifySessionToken(sessionToken);
             if (authResult.status === "authorized") showDashboard(authResult.email);
             else if (authResult.status === "denied") showAccessDenied(authResult.email, authResult.reason);
           }
-        } catch { /* ignore */ }
+        } catch (err) {
+          console.error("Auth listener session token error:", err);
+        }
       }
     });
-    try {
-      clerk.mountSignIn(mountEl, {
-        appearance: {
-          variables: {
-            colorPrimary: "#e5484d",
-            colorBackground: "#12141d",
-            colorText: "#ffffff",
-            colorTextSecondary: "#a1a1aa",
-            colorTextOnPrimaryBackground: "#ffffff",
-            colorInputBackground: "#181b26",
-            colorInputText: "#ffffff",
-            borderRadius: "8px"
+  }
+
+  try {
+    clerk.mountSignIn(mountEl, {
+      appearance: {
+        variables: {
+          colorPrimary: "#e5484d",
+          colorBackground: "#12141d",
+          colorText: "#ffffff",
+          colorTextSecondary: "#a1a1aa",
+          colorTextOnPrimaryBackground: "#ffffff",
+          colorInputBackground: "#181b26",
+          colorInputText: "#ffffff",
+          borderRadius: "8px"
+        },
+        elements: {
+          socialButtonsBlockButton: {
+            backgroundColor: "#1c202e !important",
+            borderColor: "rgba(255, 255, 255, 0.18) !important",
+            color: "#ffffff !important",
           },
-          elements: {
-            socialButtonsBlockButton: {
-              backgroundColor: "#1c202e !important",
-              borderColor: "rgba(255, 255, 255, 0.18) !important",
-              color: "#ffffff !important",
-            },
-            socialButtonsBlockButtonText: {
-              color: "#ffffff !important",
-              fontWeight: "600 !important",
-              opacity: "1 !important"
-            },
-            socialButtonsBlockButtonArrow: {
-              color: "#ffffff !important"
-            },
-            formFieldLabel: {
-              color: "#e4e4e7 !important"
-            },
-            footerActionText: {
-              color: "#a1a1aa !important"
-            },
-            footerActionLink: {
-              color: "#e5484d !important",
-              fontWeight: "600 !important"
-            }
+          socialButtonsBlockButtonText: {
+            color: "#ffffff !important",
+            fontWeight: "600 !important",
+            opacity: "1 !important"
+          },
+          socialButtonsBlockButtonArrow: {
+            color: "#ffffff !important"
+          },
+          formFieldLabel: {
+            color: "#e4e4e7 !important"
+          },
+          footerActionText: {
+            color: "#a1a1aa !important"
+          },
+          footerActionLink: {
+            color: "#e5484d !important",
+            fontWeight: "600 !important"
           }
         }
-      });
-    } catch (err) {
-      console.error("Clerk mountSignIn failed:", err);
-    }
+      }
+    });
+  } catch (err) {
+    console.error("Clerk mountSignIn failed:", err);
   }
 }
 
@@ -231,12 +238,16 @@ function showAuth() {
 }
 
 async function signOut() {
-  if (window.Clerk && window.Clerk.signOut) {
-    await window.Clerk.signOut();
-    window.location.reload();
-  } else {
-    window.location.reload();
+  sessionToken = null;
+  const clerk = await getClerk();
+  if (clerk && clerk.signOut) {
+    try {
+      await clerk.signOut();
+    } catch (e) {
+      console.warn("Clerk signOut error:", e);
+    }
   }
+  window.location.href = "/";
 }
 
 // ── Tab navigation ──────────────────────────────────────────────────────
@@ -465,16 +476,24 @@ function exportAuditLog(format) {
 // ── Init & Security Cleanup ──────────────────────────────────────────────
 window.addEventListener("beforeunload", () => {
   sessionToken = null;
+  if (window.Clerk && window.Clerk.session) {
+    try { window.Clerk.signOut(); } catch (e) {}
+  }
 });
 
 (async function init() {
+  isInitializingPage = true;
   sessionToken = null;
-  const result = await checkSession();
-  if (result.status === "authorized") {
-    showDashboard(result.email);
-  } else if (result.status === "denied") {
-    showAccessDenied(result.email, result.reason);
-  } else {
-    showAuth();
+
+  const clerk = await getClerk();
+  if (clerk && clerk.session) {
+    try {
+      await clerk.signOut();
+    } catch (e) {
+      console.warn("Sign out on refresh failed:", e);
+    }
   }
+
+  isInitializingPage = false;
+  showAuth();
 })();
