@@ -25,7 +25,7 @@ function readBody(req) {
 
 function setCors(req, res) {
   const origin = req.headers.origin || "";
-  const allowed = ["https://sourced.run", "http://localhost:4181"];
+  const allowed = ["https://sourced.run", "https://www.sourced.run", "http://localhost:4181"];
   if (process.env.SOURCED_DASHBOARD_ORIGIN) allowed.push(process.env.SOURCED_DASHBOARD_ORIGIN);
   if (allowed.includes(origin) || !origin) {
     res.setHeader("Access-Control-Allow-Origin", origin || "https://sourced.run");
@@ -61,6 +61,7 @@ export default async function handler(req, res) {
   const endpoint = body._endpoint || "keys";
   delete body._endpoint;
   const adminSecret = process.env.SOURCED_ADMIN_SECRET || "sourced_admin_live_key_2026";
+  const host = req.headers.host || "sourced.run";
 
   if (endpoint === "chains") {
     try {
