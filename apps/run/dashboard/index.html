@@ -3,105 +3,269 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sourced — Dashboard</title>
+  <title>Sourced — Control Deck</title>
   <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
   <style>
-    .dash-layout { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
-    .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
-    .dash-header h1 { font-size: 1.25rem; margin: 0; }
-    .dash-nav { display: flex; gap: 0.25rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
-    .dash-nav button { background: none; border: none; color: var(--text-muted); padding: 0.75rem 1rem; cursor: pointer; font-family: inherit; font-size: 0.875rem; border-bottom: 2px solid transparent; transition: all 0.15s; }
-    .dash-nav button:hover { color: var(--text); }
-    .dash-nav button.active { color: var(--text); border-bottom-color: var(--signal-red, #d4111e); }
+    :root {
+      --bg-dark: #090a0f;
+      --bg-card: rgba(18, 20, 29, 0.7);
+      --bg-card-hover: rgba(28, 31, 46, 0.8);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(244, 63, 94, 0.3);
+      --accent-red: #f43f5e;
+      --accent-red-glow: rgba(244, 63, 94, 0.2);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    body {
+      background: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(244, 63, 94, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.04) 0%, transparent 40%);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      margin: 0;
+    }
+    .dash-layout { max-width: 1040px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+    .dash-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .dash-brand { display: flex; align-items: center; gap: 0.75rem; }
+    .dash-brand-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      background: rgba(244, 63, 94, 0.15);
+      color: var(--accent-red);
+      border: 1px solid var(--border-accent);
+      text-transform: uppercase;
+    }
+    .dash-header h1 { font-size: 1.35rem; font-weight: 600; margin: 0; letter-spacing: -0.02em; }
+    .dash-user-bar { display: flex; align-items: center; gap: 1rem; }
+    .dash-user-info { font-size: 0.825rem; color: var(--text-muted); font-family: var(--font-mono); }
+    .dash-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 0.35rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+    .dash-nav button {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.6rem 1.25rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .dash-nav button:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.04); }
+    .dash-nav button.active {
+      color: #ffffff;
+      background: rgba(244, 63, 94, 0.18);
+      border: 1px solid var(--border-accent);
+      box-shadow: 0 0 12px var(--accent-red-glow);
+    }
     .dash-section { display: none; }
-    .dash-section.active { display: block; }
-    .card { background: var(--bg-card, rgba(255,255,255,0.03)); border: 1px solid var(--border); border-radius: 6px; padding: 1.25rem; margin-bottom: 1rem; }
-    .card h3 { margin: 0 0 0.75rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
-    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .stat-card { background: var(--bg-card, rgba(255,255,255,0.03)); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; text-align: center; }
-    .stat-card .value { font-size: 2rem; font-weight: 700; font-family: var(--font-mono); }
-    .stat-card .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-top: 0.25rem; }
+    .dash-section.active { display: block; animation: fadeIn 0.2s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .card h3 {
+      margin: 0 0 1rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem; }
+    .stat-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.25rem;
+      text-align: center;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .stat-card:hover { transform: translateY(-2px); border-color: var(--border-accent); }
+    .stat-card .value { font-size: 2.25rem; font-weight: 700; font-family: var(--font-mono); color: #ffffff; }
+    .stat-card .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.4rem; }
     table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    th { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 500; font-size: 0.75rem; text-transform: uppercase; }
-    td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border, rgba(255,255,255,0.06)); font-family: var(--font-mono); font-size: 0.8rem; }
-    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 3px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
-    .badge-active { background: #1a4d2e; color: #4ade80; }
-    .badge-disabled { background: #4d1a1a; color: #f87171; }
-    .badge-ok { background: #1a4d2e; color: #4ade80; }
-    .badge-err { background: #4d1a1a; color: #f87171; }
-    .btn { padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-card, rgba(255,255,255,0.05)); color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.8rem; transition: background 0.15s; }
-    .btn:hover { background: rgba(255,255,255,0.1); }
-    .btn-danger { border-color: #f87171; color: #f87171; }
-    .btn-danger:hover { background: rgba(248,113,113,0.1); }
-    .form-row { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-    .form-row input { flex: 1; padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); font-family: var(--font-mono); font-size: 0.875rem; }
-    #auth-container { display: flex; justify-content: center; align-items: center; min-height: 60vh; }
+    th { text-align: left; padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    td { padding: 0.75rem 0.85rem; border-bottom: 1px solid rgba(255, 255, 255, 0.04); font-family: var(--font-mono); font-size: 0.825rem; color: #e5e7eb; }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+    .badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.725rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .badge-active { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .badge-disabled { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-ok { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .badge-err { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 0.825rem;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .btn:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
+    .btn-primary { background: var(--accent-red); border-color: var(--accent-red); color: #ffffff; font-weight: 600; }
+    .btn-primary:hover { background: #e11d48; box-shadow: 0 0 16px var(--accent-red-glow); }
+    .btn-danger { border-color: rgba(248, 113, 113, 0.3); color: #f87171; background: rgba(239, 68, 68, 0.1); }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.25); border-color: #f87171; }
+    .form-row { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+    .form-row input {
+      flex: 1;
+      padding: 0.55rem 0.85rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.4);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      transition: border-color 0.2s ease;
+    }
+    .form-row input:focus { outline: none; border-color: var(--accent-red); box-shadow: 0 0 0 2px var(--accent-red-glow); }
+    #auth-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 80vh;
+      padding: 2rem;
+    }
+    #auth-mount {
+      margin-top: 1rem;
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
     #dashboard-container { display: none; }
-    .loading { color: var(--text-muted); font-style: italic; }
-    .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--bg-card, #1a1a1a); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem 1rem; font-size: 0.875rem; z-index: 1000; opacity: 0; transition: opacity 0.3s; }
-    .toast.show { opacity: 1; }
+    .loading { color: var(--text-muted); font-style: italic; font-size: 0.875rem; }
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #18181b;
+      border: 1px solid var(--border-accent);
+      border-radius: 8px;
+      padding: 0.85rem 1.25rem;
+      font-size: 0.875rem;
+      color: #ffffff;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.25s ease;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
   </style>
 </head>
 <body>
   <div id="auth-container">
-    <div style="text-align:center;color:var(--text-muted,#888);">
-      <p>Loading authentication…</p>
-      <p id="clerk-debug" style="font-size:0.75rem;opacity:0.5;margin-top:1rem;"></p>
+    <div style="text-align:center;margin-bottom:1.5rem;">
+      <div style="display:inline-flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+        <span style="font-size:1.5rem;font-weight:700;letter-spacing:-0.03em;">SOURCED</span>
+        <span class="dash-brand-badge">CONTROL DECK</span>
+      </div>
+      <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">Authentication required to access API key administration & network telemetry.</p>
+    </div>
+    <div id="auth-mount">
+      <div class="loading">Loading Clerk authentication...</div>
     </div>
   </div>
 
   <div id="dashboard-container" class="dash-layout">
     <header class="dash-header">
-      <h1>Sourced Dashboard</h1>
-      <div><button class="btn" onclick="signOut()">Sign Out</button></div>
+      <div class="dash-brand">
+        <h1>SOURCED</h1>
+        <span class="dash-brand-badge">CONTROL DECK</span>
+      </div>
+      <div class="dash-user-bar">
+        <span id="user-display" class="dash-user-info"></span>
+        <button class="btn btn-danger" onclick="signOut()">Sign Out</button>
+      </div>
     </header>
 
     <nav class="dash-nav">
-      <button class="active" data-tab="keys">Keys</button>
+      <button class="active" data-tab="keys">API Keys</button>
       <button data-tab="chains">Chains</button>
-      <button data-tab="stats">Stats</button>
-      <button data-tab="audit">Audit</button>
+      <button data-tab="stats">Telemetry</button>
+      <button data-tab="audit">Audit Log</button>
     </nav>
 
     <section id="tab-keys" class="dash-section active">
       <div class="card">
-        <h3>Create Key</h3>
+        <h3>Create API Key</h3>
         <div class="form-row">
-          <input id="new-key-name" placeholder="Key name (e.g. partner-x)" />
-          <button class="btn" onclick="createKey()">Create</button>
+          <input id="new-key-name" placeholder="Key name (e.g. partner-service-x)" />
+          <button class="btn btn-primary" onclick="createKey()">Issue Key</button>
         </div>
         <div id="new-key-result"></div>
       </div>
       <div class="card">
-        <h3>Active Keys</h3>
+        <h3>Active API Keys</h3>
         <table>
-          <thead><tr><th>Key</th><th>Name</th><th>Status</th><th>Created</th><th>Chain ID</th><th></th></tr></thead>
-          <tbody id="keys-table"><tr><td colspan="6" class="loading">Loading…</td></tr></tbody>
+          <thead><tr><th>Key Mask</th><th>Name</th><th>Status</th><th>Issued</th><th>Chain ID</th><th>Actions</th></tr></thead>
+          <tbody id="keys-table"><tr><td colspan="6" class="loading">Loading keys…</td></tr></tbody>
         </table>
       </div>
     </section>
 
     <section id="tab-chains" class="dash-section">
       <div class="card">
-        <h3>Hosted Chains</h3>
+        <h3>Hosted Transparency Chains</h3>
         <table>
-          <thead><tr><th>Chain ID</th><th>Name</th><th>Seq</th><th>Head</th><th>Last Update</th></tr></thead>
-          <tbody id="chains-table"><tr><td colspan="5" class="loading">Loading…</td></tr></tbody>
+          <thead><tr><th>Chain ID</th><th>Name</th><th>Sequence</th><th>Head Hash</th><th>Last Updated</th></tr></thead>
+          <tbody id="chains-table"><tr><td colspan="5" class="loading">Loading chains…</td></tr></tbody>
         </table>
       </div>
     </section>
 
     <section id="tab-stats" class="dash-section">
-      <div id="stats-content"><p class="loading">Loading…</p></div>
+      <div id="stats-content"><p class="loading">Loading telemetry…</p></div>
     </section>
 
     <section id="tab-audit" class="dash-section">
       <div class="card">
-        <h3>Admin Actions</h3>
+        <h3>Admin Actions Log</h3>
         <table>
-          <thead><tr><th>Time</th><th>Action</th><th>Key</th><th>Detail</th><th>IP</th></tr></thead>
-          <tbody id="audit-table"><tr><td colspan="5" class="loading">Loading…</td></tr></tbody>
+          <thead><tr><th>Timestamp</th><th>Action</th><th>Target Key</th><th>Detail</th><th>IP Address</th></tr></thead>
+          <tbody id="audit-table"><tr><td colspan="5" class="loading">Loading audit records…</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -109,6 +273,6 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="/dashboard/dashboard.js?v=5"></script>
+  <script src="/dashboard/dashboard.js?v=6"></script>
 </body>
 </html>

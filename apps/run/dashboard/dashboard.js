@@ -1,11 +1,11 @@
 /**
- * Sourced Dashboard.
- * Dual-mode auth: Clerk JS SDK integration with fallback to server-side /api/dashboard/session token verification.
+ * Sourced Dashboard (Control Deck).
+ * Strict Clerk auth: mounts Clerk Sign-In component directly into the DOM or redirects to Clerk portal.
+ * All API proxy requests require a valid Clerk Session JWT.
  */
 
 const API_BASE = window.location.origin;
 const SIGN_IN_URL = "https://accounts.sourced.run/sign-in";
-const SIGN_UP_URL = "https://accounts.sourced.run/sign-up";
 
 let sessionToken = null;
 let clerkPublishableKey = null;
@@ -22,6 +22,10 @@ function showToast(msg, duration = 3000) {
   t.textContent = msg;
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), duration);
+}
+
+function copyToClipboard(text, label = "Copied") {
+  navigator.clipboard.writeText(text).then(() => showToast(`${label} to clipboard!`)).catch(() => showToast("Failed to copy"));
 }
 
 async function loadClerkSDK(key) {
@@ -66,7 +70,7 @@ async function checkSession() {
     console.warn("Session endpoint check failed:", err);
   }
 
-  // Attempt Clerk SDK authentication if publishable key exists
+  // Load Clerk JS SDK and check active session
   if (clerkPublishableKey || window.Clerk) {
     const clerk = await loadClerkSDK(clerkPublishableKey);
     if (clerk && clerk.session) {
@@ -82,11 +86,45 @@ async function checkSession() {
   return false;
 }
 
+async function mountClerkSignIn() {
+  const mountEl = document.getElementById("auth-mount");
+  if (!clerkPublishableKey && !window.Clerk) {
+    const redirectUrl = encodeURIComponent(window.location.href);
+    window.location.href = `${SIGN_IN_URL}?redirect_url=${redirectUrl}`;
+    return;
+  }
+
+  const clerk = await loadClerkSDK(clerkPublishableKey);
+  if (clerk && mountEl) {
+    mountEl.innerHTML = "";
+    clerk.mountSignIn(mountEl, {
+      appearance: {
+        variables: {
+          colorPrimary: "#f43f5e",
+          colorBackground: "#12141d",
+          colorText: "#f3f4f6",
+          colorInputBackground: "#090a0f",
+          colorInputText: "#ffffff",
+          borderRadius: "8px"
+        }
+      },
+      afterSignInUrl: window.location.href,
+      signUpUrl: "https://accounts.sourced.run/sign-up"
+    });
+  } else {
+    const redirectUrl = encodeURIComponent(window.location.href);
+    window.location.href = `${SIGN_IN_URL}?redirect_url=${redirectUrl}`;
+  }
+}
+
 async function proxy(endpoint, body = {}) {
   if (!sessionToken && window.Clerk && window.Clerk.session) {
     try { sessionToken = await window.Clerk.session.getToken(); } catch { /* ignore */ }
   }
-  if (!sessionToken) throw new Error("not authenticated");
+  if (!sessionToken) {
+    showAuth();
+    throw new Error("Authentication required");
+  }
   const res = await fetch(`${API_BASE}/api/dashboard/proxy`, {
     method: "POST",
     credentials: "include",
@@ -97,6 +135,10 @@ async function proxy(endpoint, body = {}) {
     body: JSON.stringify({ _endpoint: endpoint, ...body }),
   });
   const data = await res.json();
+  if (res.status === 401) {
+    showAuth();
+    throw new Error("Session expired — please sign in again");
+  }
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }
@@ -104,6 +146,12 @@ async function proxy(endpoint, body = {}) {
 function showDashboard() {
   document.getElementById("auth-container").style.display = "none";
   document.getElementById("dashboard-container").style.display = "block";
+  if (window.Clerk && window.Clerk.user) {
+    const userEl = document.getElementById("user-display");
+    if (userEl) {
+      userEl.textContent = window.Clerk.user.primaryEmailAddress?.emailAddress || window.Clerk.user.username || window.Clerk.user.id;
+    }
+  }
   loadKeys();
   loadChains();
   loadStats();
@@ -111,35 +159,9 @@ function showDashboard() {
 }
 
 function showAuth() {
-  const redirectUrl = encodeURIComponent(window.location.href);
   document.getElementById("dashboard-container").style.display = "none";
   document.getElementById("auth-container").style.display = "flex";
-  document.getElementById("auth-container").innerHTML = `
-    <div style="text-align:center;">
-      <h2 style="margin-bottom:0.5rem;font-size:1.5rem;">Sourced Dashboard</h2>
-      <p style="color:var(--text-muted);margin-bottom:1.5rem;">Sign in to manage API keys, chains, and view stats.</p>
-      <button onclick="handleSignIn()" class="btn" style="display:inline-block;padding:0.6rem 2rem;font-size:1rem;margin-right:0.5rem;cursor:pointer;">Sign In</button>
-      <button onclick="handleSignUp()" class="btn" style="display:inline-block;padding:0.6rem 2rem;font-size:1rem;border-color:var(--signal-red,#d4111e);color:var(--signal-red,#d4111e);cursor:pointer;">Sign Up</button>
-    </div>
-  `;
-}
-
-function handleSignIn() {
-  const redirectUrl = window.location.href;
-  if (window.Clerk && window.Clerk.redirectToSignIn) {
-    window.Clerk.redirectToSignIn({ returnBackUrl: redirectUrl });
-  } else {
-    window.location.href = `${SIGN_IN_URL}?redirect_url=${encodeURIComponent(redirectUrl)}`;
-  }
-}
-
-function handleSignUp() {
-  const redirectUrl = window.location.href;
-  if (window.Clerk && window.Clerk.redirectToSignUp) {
-    window.Clerk.redirectToSignUp({ returnBackUrl: redirectUrl });
-  } else {
-    window.location.href = `${SIGN_UP_URL}?redirect_url=${encodeURIComponent(redirectUrl)}`;
-  }
+  mountClerkSignIn();
 }
 
 async function signOut() {
