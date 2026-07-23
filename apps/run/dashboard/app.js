@@ -506,6 +506,30 @@ function exportAuditLog(format) {
 
 /* ── Init ─────────────────────────────────────────────────────────────── */
 
+/**
+ * Detect if this page load is a return from an OAuth redirect.
+ * Clerk appends __clerk_status or __clerk_db_jwt to the URL after OAuth.
+ * We also check for a fresh sign-in flag we set ourselves.
+ */
+function isOAuthReturn() {
+  const params = new URLSearchParams(window.location.search);
+  return params.has("__clerk_status") || params.has("__clerk_db_jwt") ||
+         params.has("__clerk_ticket") || params.has("__clerk_created_session");
+}
+
+/**
+ * Clean Clerk query params from the URL bar without triggering a page reload.
+ */
+function cleanUrl() {
+  const url = new URL(window.location.href);
+  for (const key of [...url.searchParams.keys()]) {
+    if (key.startsWith("__clerk")) url.searchParams.delete(key);
+  }
+  if (url.toString() !== window.location.href) {
+    window.history.replaceState({}, "", url.toString());
+  }
+}
+
 (async function init() {
   sessionToken = null;
 
@@ -519,7 +543,8 @@ function exportAuditLog(format) {
     return;
   }
 
-  // Attach the session listener ONCE — drives all auth state transitions.
+  // Attach the session listener ONCE — drives all auth state transitions
+  // (fires when user completes sign-in via mounted component).
   clerk.addListener(async ({ session }) => {
     if (session) {
       try {
@@ -532,34 +557,44 @@ function exportAuditLog(format) {
           } else if (result.status === "denied") {
             showAccessDenied(result.email, result.reason);
           }
-          // "unauthenticated" from server = token expired/invalid, stay on sign-in
         }
       } catch (err) {
         console.error("Session listener error:", err);
       }
     }
-    // session === null means user signed out → handled by signOut() redirect
   });
 
-  // Check existing session (e.g. OAuth redirect return or persistent session).
+  const oauthReturn = isOAuthReturn();
+  cleanUrl();
+
   if (clerk.session) {
-    try {
-      const token = await clerk.session.getToken();
-      if (token) {
-        sessionToken = token;
-        const result = await verifySessionToken(token);
-        if (result.status === "authorized") {
-          showDashboard(result.email);
-          return;
+    if (oauthReturn) {
+      // OAuth just completed — verify the fresh session.
+      try {
+        const token = await clerk.session.getToken();
+        if (token) {
+          sessionToken = token;
+          const result = await verifySessionToken(token);
+          if (result.status === "authorized") {
+            showDashboard(result.email);
+            return;
+          }
+          if (result.status === "denied") {
+            showAccessDenied(result.email, result.reason);
+            return;
+          }
         }
-        if (result.status === "denied") {
-          showAccessDenied(result.email, result.reason);
-          return;
-        }
+      } catch (err) {
+        console.warn("OAuth session check failed:", err);
       }
-    } catch (err) {
-      console.warn("Existing session check failed:", err);
     }
+
+    // NOT an OAuth return — this is a page refresh or direct visit.
+    // Enforce ephemeral session: sign out the stale session first.
+    try {
+      await clerk.signOut();
+    } catch {}
+    sessionToken = null;
   }
 
   // No valid session — show sign-in.
