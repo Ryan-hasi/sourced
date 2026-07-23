@@ -1,11 +1,10 @@
 /**
- * Sourced Dashboard (Control Deck).
- * Strict Clerk auth: mounts Clerk Sign-In component directly into the DOM or redirects to Clerk portal.
- * All API proxy requests require a valid Clerk Session JWT matching authorized admin emails.
+ * Sourced Control Deck Application Logic.
+ * Strict Clerk auth & server-verified admin authorization.
  */
 
 const API_BASE = window.location.origin;
-const SIGN_IN_URL = "https://accounts.sourced.run/sign-in";
+const DEFAULT_CLERK_KEY = "pk_live_Y2xlcmsudGlja3dpcmUubmV3cyQ";
 
 let sessionToken = null;
 let clerkPublishableKey = null;
@@ -29,26 +28,39 @@ function copyToClipboard(text, label = "Copied") {
 }
 
 async function loadClerkSDK(key) {
-  if (window.Clerk) return window.Clerk;
+  if (window.Clerk && window.Clerk.isReady) return window.Clerk;
   if (!key) return null;
   return new Promise((resolve) => {
     const script = document.createElement("script");
     script.setAttribute("data-clerk-publishable-key", key);
     script.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
     script.async = true;
+
+    // Timeout safeguard so the page NEVER hangs on loading
+    const timer = setTimeout(() => {
+      resolve(window.Clerk || null);
+    }, 6000);
+
     script.onload = async () => {
+      clearTimeout(timer);
       try {
         if (window.Clerk) {
-          await window.Clerk.load();
+          if (!window.Clerk.isReady) {
+            await window.Clerk.load();
+          }
           resolve(window.Clerk);
         } else {
           resolve(null);
         }
-      } catch {
+      } catch (err) {
+        console.warn("Clerk load failed:", err);
         resolve(null);
       }
     };
-    script.onerror = () => resolve(null);
+    script.onerror = () => {
+      clearTimeout(timer);
+      resolve(null);
+    };
     document.head.appendChild(script);
   });
 }
@@ -64,14 +76,16 @@ async function checkSession() {
     console.warn("Session endpoint check failed:", err);
   }
 
-  if (clerkPublishableKey || window.Clerk) {
-    const clerk = await loadClerkSDK(clerkPublishableKey);
-    if (clerk && clerk.session) {
-      try {
-        sessionToken = await clerk.session.getToken();
-      } catch (e) {
-        console.warn("Failed to get Clerk session token:", e);
-      }
+  if (!clerkPublishableKey) {
+    clerkPublishableKey = DEFAULT_CLERK_KEY;
+  }
+
+  const clerk = await loadClerkSDK(clerkPublishableKey);
+  if (clerk && clerk.session) {
+    try {
+      sessionToken = await clerk.session.getToken();
+    } catch (e) {
+      console.warn("Failed to get Clerk session token:", e);
     }
   }
 
@@ -97,13 +111,8 @@ async function checkSession() {
 
 async function mountClerkSignIn() {
   const mountEl = document.getElementById("auth-mount");
-  if (!clerkPublishableKey && !window.Clerk) {
-    const redirectUrl = encodeURIComponent(window.location.href);
-    window.location.href = `${SIGN_IN_URL}?redirect_url=${redirectUrl}`;
-    return;
-  }
+  const clerk = await loadClerkSDK(clerkPublishableKey || DEFAULT_CLERK_KEY);
 
-  const clerk = await loadClerkSDK(clerkPublishableKey);
   if (clerk && mountEl) {
     mountEl.innerHTML = "";
     clerk.addListener(async ({ session }) => {
@@ -118,22 +127,32 @@ async function mountClerkSignIn() {
         } catch { /* ignore */ }
       }
     });
-    clerk.mountSignIn(mountEl, {
-      appearance: {
-        variables: {
-          colorPrimary: "#f43f5e",
-          colorBackground: "#12141d",
-          colorText: "#f3f4f6",
-          colorInputBackground: "#090a0f",
-          colorInputText: "#ffffff",
-          borderRadius: "8px"
+    try {
+      clerk.mountSignIn(mountEl, {
+        appearance: {
+          variables: {
+            colorPrimary: "#e5484d",
+            colorBackground: "#12141d",
+            colorText: "#f3f4f6",
+            colorInputBackground: "#090a0f",
+            colorInputText: "#ffffff",
+            borderRadius: "8px"
+          }
         }
-      },
-      signUpUrl: "https://accounts.sourced.run/sign-up"
-    });
-  } else {
-    const redirectUrl = encodeURIComponent(window.location.href);
-    window.location.href = `${SIGN_IN_URL}?redirect_url=${redirectUrl}`;
+      });
+    } catch (err) {
+      mountEl.innerHTML = `<div style="color:#f87171;padding:1rem;">Failed to render Sign-In form: ${esc(err.message)}</div>`;
+    }
+  } else if (mountEl) {
+    mountEl.innerHTML = `
+      <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:1.5rem;border-radius:8px;max-width:440px;margin:0 auto;">
+        <div style="font-weight:600;color:#f87171;margin-bottom:0.5rem;">Authentication Configuration Required</div>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 1rem;line-height:1.4;">
+          The Clerk authentication SDK could not be initialized. Make sure <code>CLERK_SECRET_KEY</code> and <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> are configured in Vercel.
+        </p>
+        <button class="btn btn-primary" onclick="window.location.reload()">Retry Loading</button>
+      </div>
+    `;
   }
 }
 
@@ -156,8 +175,7 @@ async function proxy(endpoint, body = {}) {
   });
   const data = await res.json();
   if (res.status === 401 || res.status === 403) {
-    const isDenied = res.status === 403;
-    if (isDenied) {
+    if (res.status === 403) {
       showAccessDenied("", data.error);
     } else {
       showAuth();
@@ -202,7 +220,7 @@ async function signOut() {
     await window.Clerk.signOut();
     window.location.reload();
   } else {
-    window.location.href = `https://accounts.sourced.run/sign-out?redirect_url=${encodeURIComponent(window.location.href)}`;
+    window.location.reload();
   }
 }
 
