@@ -30,8 +30,7 @@ export default function handler(req, res) {
     const markSvg = `
 <svg xmlns="http://www.w3.org/2000/svg" width="152" height="32" role="img" aria-label="Sourced-conformant">
   <rect x="0.5" y="0.5" width="151" height="31" rx="6.5" fill="#0a0a0a" stroke="#33333a"/>
-  <circle cx="19" cy="16" r="4.5" fill="#e5484d"/>
-  <text x="33" y="20.5" font-family="ui-monospace,'Cascadia Code',Menlo,Consolas,monospace" font-size="12" font-weight="700" letter-spacing="1.6" fill="#ededed">&#10003; SOURCED</text>
+  <text x="22" y="20.5" font-family="ui-monospace,'Cascadia Code',Menlo,Consolas,monospace" font-size="12" font-weight="700" letter-spacing="1.6" fill="#ededed">&#10003; SOURCED</text>
 </svg>
 `.trim();
     return res.status(200).send(markSvg);
@@ -61,10 +60,9 @@ export default function handler(req, res) {
   </style>
   <rect width="${width}" height="${height}" class="bg" />
   
-  <!-- Official Checkmark Brand Header -->
-  <circle cx="20" cy="22" r="4.5" fill="#e5484d" />
-  <text x="34" y="26" class="brand">&#10003; SOURCED</text>
-  <text x="145" y="26" class="status">// ${statusLabel}</text>
+  <!-- Official Checkmark Brand Header (No dot) -->
+  <text x="20" y="26" class="brand">&#10003; SOURCED</text>
+  <text x="130" y="26" class="status">// ${statusLabel}</text>
   <text x="${width - 20}" y="26" class="hash" text-anchor="end">CHAIN #${hash}</text>
   
   <!-- Divider -->
