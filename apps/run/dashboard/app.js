@@ -4,7 +4,6 @@
  */
 
 const API_BASE = window.location.origin;
-const DEFAULT_CLERK_KEY = "pk_live_Y2xlcmsudGlja3dpcmUubmV3cyQ";
 
 let sessionToken = null;
 let clerkPublishableKey = null;
@@ -76,16 +75,14 @@ async function checkSession() {
     console.warn("Session endpoint check failed:", err);
   }
 
-  if (!clerkPublishableKey) {
-    clerkPublishableKey = DEFAULT_CLERK_KEY;
-  }
-
-  const clerk = await loadClerkSDK(clerkPublishableKey);
-  if (clerk && clerk.session) {
-    try {
-      sessionToken = await clerk.session.getToken();
-    } catch (e) {
-      console.warn("Failed to get Clerk session token:", e);
+  if (clerkPublishableKey) {
+    const clerk = await loadClerkSDK(clerkPublishableKey);
+    if (clerk && clerk.session) {
+      try {
+        sessionToken = await clerk.session.getToken();
+      } catch (e) {
+        console.warn("Failed to get Clerk session token:", e);
+      }
     }
   }
 
@@ -111,7 +108,20 @@ async function checkSession() {
 
 async function mountClerkSignIn() {
   const mountEl = document.getElementById("auth-mount");
-  const clerk = await loadClerkSDK(clerkPublishableKey || DEFAULT_CLERK_KEY);
+  if (!clerkPublishableKey) {
+    if (mountEl) {
+      mountEl.innerHTML = `
+        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);padding:1.5rem;border-radius:10px;max-width:460px;margin:0 auto;text-align:center;">
+          <div style="font-weight:600;color:#f87171;margin-bottom:0.5rem;font-size:1rem;">Sourced Clerk App Required</div>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 1rem;line-height:1.4;">
+            Please set <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> and <code>CLERK_SECRET_KEY</code> in Vercel for the Sourced project to enable authentication.
+          </p>
+        </div>
+      `;
+    }
+    return;
+  }
+  const clerk = await loadClerkSDK(clerkPublishableKey);
 
   if (clerk && mountEl) {
     mountEl.innerHTML = "";
