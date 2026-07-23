@@ -16,8 +16,8 @@
       --bg-card-hover: rgba(28, 31, 46, 0.8);
       --border-color: rgba(255, 255, 255, 0.08);
       --border-accent: rgba(244, 63, 94, 0.3);
-      --accent-red: #f43f5e;
-      --accent-red-glow: rgba(244, 63, 94, 0.2);
+      --accent-red: #e5484d;
+      --accent-red-glow: rgba(229, 72, 77, 0.2);
       --text-main: #f3f4f6;
       --text-muted: #9ca3af;
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -26,7 +26,7 @@
     body {
       background: var(--bg-dark);
       background-image: 
-        radial-gradient(circle at 15% 15%, rgba(244, 63, 94, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 15% 15%, rgba(229, 72, 77, 0.06) 0%, transparent 40%),
         radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.04) 0%, transparent 40%);
       color: var(--text-main);
       font-family: var(--font-sans);
@@ -49,7 +49,7 @@
       letter-spacing: 0.08em;
       padding: 0.2rem 0.6rem;
       border-radius: 9999px;
-      background: rgba(244, 63, 94, 0.15);
+      background: rgba(229, 72, 77, 0.15);
       color: var(--accent-red);
       border: 1px solid var(--border-accent);
       text-transform: uppercase;
@@ -81,7 +81,7 @@
     .dash-nav button:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.04); }
     .dash-nav button.active {
       color: #ffffff;
-      background: rgba(244, 63, 94, 0.18);
+      background: rgba(229, 72, 77, 0.18);
       border: 1px solid var(--border-accent);
       box-shadow: 0 0 12px var(--accent-red-glow);
     }
@@ -144,7 +144,7 @@
     }
     .btn:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
     .btn-primary { background: var(--accent-red); border-color: var(--accent-red); color: #ffffff; font-weight: 600; }
-    .btn-primary:hover { background: #e11d48; box-shadow: 0 0 16px var(--accent-red-glow); }
+    .btn-primary:hover { background: #d4111e; box-shadow: 0 0 16px var(--accent-red-glow); }
     .btn-danger { border-color: rgba(248, 113, 113, 0.3); color: #f87171; background: rgba(239, 68, 68, 0.1); }
     .btn-danger:hover { background: rgba(239, 68, 68, 0.25); border-color: #f87171; }
     .form-row { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
@@ -202,10 +202,11 @@
         <span style="font-size:1.5rem;font-weight:700;letter-spacing:-0.03em;">SOURCED</span>
         <span class="dash-brand-badge">CONTROL DECK</span>
       </div>
-      <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">Authentication required to access API key administration & network telemetry.</p>
+      <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">Authentication required to access API key administration &amp; network telemetry.</p>
     </div>
     <div id="auth-mount">
-      <div class="loading">Loading Clerk authentication...</div>
+      <div class="loading">Checking authentication state...</div>
+    </div>
   </div>
 
   <div id="access-denied-container" style="display:none; flex-direction:column; align-items:center; justify-content:center; min-height:85vh; padding:2rem; text-align:center;">
@@ -287,6 +288,6 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="/dashboard/app.js?v=11"></script>
+  <script src="/dashboard/app.js?v=12"></script>
 </body>
 </html>
