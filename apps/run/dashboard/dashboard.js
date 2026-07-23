@@ -212,16 +212,38 @@ async function loadKeys() {
   }
 }
 
+let keyTimer = null;
+
 async function createKey() {
   const name = document.getElementById("new-key-name").value.trim();
   if (!name) return showToast("Name required");
   try {
     const data = await proxy("keys", { action: "create", name });
-    document.getElementById("new-key-result").innerHTML =
-      `<div class="card" style="border-color: #4ade80;"><strong>New key (store now — shown once):</strong><br><code>${esc(data.key)}</code></div>`;
+    if (keyTimer) clearInterval(keyTimer);
+    let secondsLeft = 60;
+    
+    document.getElementById("new-key-result").innerHTML = `
+      <div class="card" style="border-color: #4ade80;">
+        <strong>New key (store now — shown once):</strong><br>
+        <code>${esc(data.key)}</code>
+        <div style="font-size:0.8rem; color:#4ade80; margin-top:6px;" id="key-timer-display">⏱ Auto-hiding in ${secondsLeft}s</div>
+      </div>
+    `;
+    
+    keyTimer = setInterval(() => {
+      secondsLeft--;
+      const timerEl = document.getElementById("key-timer-display");
+      if (timerEl) timerEl.textContent = `⏱ Auto-hiding in ${secondsLeft}s`;
+      if (secondsLeft <= 0) {
+        clearInterval(keyTimer);
+        const resEl = document.getElementById("new-key-result");
+        if (resEl) resEl.innerHTML = `<div class="card" style="border-color: var(--border-color, #333); color: #8B949E;"><em>Key display timer expired — key destroyed from memory.</em></div>`;
+      }
+    }, 1000);
+
     document.getElementById("new-key-name").value = "";
     loadKeys();
-    showToast("Key created");
+    showToast("Key created (60s timer active)");
   } catch (err) {
     showToast(`Error: ${err.message}`);
   }
@@ -359,10 +381,16 @@ async function exportAuditLog(format = "json") {
   }
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────
+// ── Init & Unload Security (No Persistent Whiteflagging) ──────────────────
+window.addEventListener("beforeunload", () => {
+  sessionToken = null;
+});
+
 (async function init() {
+  // Always require fresh active session token validation on load / reload
+  sessionToken = null;
   const isAuth = await checkSession();
-  if (isAuth) {
+  if (isAuth && sessionToken) {
     showDashboard();
   } else {
     showAuth();
