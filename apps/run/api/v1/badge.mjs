@@ -26,7 +26,7 @@ export default function handler(req, res) {
   const sources = rawSources ? rawSources.split(",").slice(0, 3).join(", ") : "";
   const hash = (url.searchParams.get("hash") || "verified").slice(0, 10);
 
-  const dotColor = signal === "confirmed" ? "#10B981" : signal === "breaking" ? "#E1140A" : signal === "developing" ? "#F59E0B" : "#6B7280";
+  const TRADEMARK_RED_DOT = "#d4111e";
   const statusLabel = signal === "confirmed" ? "CONFIRMED" : signal === "breaking" ? "BREAKING" : signal === "developing" ? "DEVELOPING" : "SINGLE SOURCE";
 
   const width = 420;
@@ -40,12 +40,12 @@ export default function handler(req, res) {
     .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 16px; font-weight: 700; fill: #F0F6FC; }
     .receipts { font-family: "JetBrains Mono", monospace, sans-serif; font-size: 12px; fill: #C9D1D9; }
     .hash { font-family: "JetBrains Mono", monospace, sans-serif; font-size: 10px; fill: #6E7681; }
-    .badge-tag { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 10px; font-weight: 800; fill: ${dotColor}; letter-spacing: 1px; }
+    .badge-tag { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 10px; font-weight: 800; fill: #8B949E; letter-spacing: 1px; }
   </style>
   <rect width="${width}" height="${height}" class="bg" />
   
-  <!-- Header row -->
-  <circle cx="24" cy="24" r="5" fill="${dotColor}" />
+  <!-- Header row with trademark crimson red dot -->
+  <circle cx="24" cy="24" r="5" fill="${TRADEMARK_RED_DOT}" />
   <text x="36" y="28" class="brand">SOURCED // ${statusLabel}</text>
   <text x="${width - 24}" y="28" class="hash" text-anchor="end">CHAIN #${hash}</text>
   
