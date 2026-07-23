@@ -25,12 +25,13 @@ export default function handler(req, res) {
   const url = new URL(req.url, "http://x");
   const variant = url.searchParams.get("variant") || "mark";
 
-  // Official standardized 152x32 Checkmark Badge ("✓ SOURCED") — Sourced Book Ch. 20
+  // Official standardized 152x32 Sourced Mark — Sourced Book Ch. 20 (Commit a52c475e)
   if (variant === "mark") {
     const markSvg = `
 <svg xmlns="http://www.w3.org/2000/svg" width="152" height="32" role="img" aria-label="Sourced-conformant">
   <rect x="0.5" y="0.5" width="151" height="31" rx="6.5" fill="#0a0a0a" stroke="#33333a"/>
-  <text x="22" y="20.5" font-family="ui-monospace,'Cascadia Code',Menlo,Consolas,monospace" font-size="12" font-weight="700" letter-spacing="1.6" fill="#ededed">&#10003; SOURCED</text>
+  <circle cx="19" cy="16" r="4.5" fill="#e5484d"/>
+  <text x="33" y="20.5" font-family="ui-monospace,'Cascadia Code',Menlo,Consolas,monospace" font-size="12" font-weight="700" letter-spacing="1.6" fill="#ededed">&#10003; SOURCED</text>
 </svg>
 `.trim();
     return res.status(200).send(markSvg);
