@@ -14,7 +14,7 @@
  *   "chains" → GET  /api/v1/chains (public, no admin secret needed)
  */
 
-const CLERK_VERIFY_URL = "https://api.clerk.com/v1/sessions/verify";
+const CLERK_VERIFY_URL = "https://api.clerk.com/v1/tokens/verify";
 
 async function verifyClerkToken(token) {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -27,7 +27,7 @@ async function verifyClerkToken(token) {
         "Authorization": `Bearer ${secretKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ session_token: token }),
+      body: JSON.stringify({ token }),
     });
 
     if (!res.ok) {
@@ -35,11 +35,12 @@ async function verifyClerkToken(token) {
     }
 
     const data = await res.json();
-    if (data.status !== "active") {
+    const isValid = data.status === "verified" || data.status === "active";
+    if (!isValid) {
       return { error: `session ${data.status}`, status: 401 };
     }
 
-    return { userId: data.user_id };
+    return { userId: data.user_id || data.claims?.sub };
   } catch (err) {
     return { error: `clerk verify error: ${err.message}`, status: 502 };
   }
