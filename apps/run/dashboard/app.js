@@ -194,7 +194,10 @@ async function mountClerkSignIn() {
   mountEl.innerHTML = "";
 
   try {
+    const dashboardUrl = `${window.location.origin}/dashboard/`;
     clerk.mountSignIn(mountEl, {
+      forceRedirectUrl: dashboardUrl,
+      fallbackRedirectUrl: dashboardUrl,
       appearance: {
         variables: {
           colorPrimary: "#e5484d",
