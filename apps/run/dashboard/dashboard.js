@@ -244,6 +244,14 @@ async function revokeKey(keyMasked) {
   catch (err) { showToast(`Error: ${err.message}`); }
 }
 
+function formatTs(ts) {
+  if (!ts) return "—";
+  if (typeof ts === "number") {
+    try { return new Date(ts).toISOString().slice(0, 16).replace("T", " "); } catch { return String(ts); }
+  }
+  return String(ts).slice(0, 16).replace("T", " ");
+}
+
 // ── Chains ───────────────────────────────────────────────────────────────
 async function loadChains() {
   try {
@@ -258,8 +266,8 @@ async function loadChains() {
         <td>${esc(c.chainId)}</td>
         <td>${esc(c.name || "—")}</td>
         <td>${c.seq ?? "—"}</td>
-        <td title="${esc(c.head || "")}">${esc((c.head || "").slice(0, 16))}…</td>
-        <td>${esc(c.ts?.slice(0, 16).replace("T", " ") || "—")}</td>
+        <td title="${esc(c.head || "")}">${esc(String(c.head || "").slice(0, 16))}…</td>
+        <td>${esc(formatTs(c.ts))}</td>
       </tr>
     `).join("");
   } catch (err) {
@@ -280,7 +288,7 @@ async function loadStats() {
         <div class="stat-card"><div class="value">${data.chains.totalRecords}</div><div class="label">Total Records</div></div>
         <div class="stat-card"><div class="value"><span class="badge ${data.kv.healthy ? "badge-ok" : "badge-err"}">${data.kv.healthy ? "OK" : "DOWN"}</span></div><div class="label">KV Health${data.kv.latencyMs ? ` (${data.kv.latencyMs}ms)` : ""}</div></div>
       </div>
-      <p style="color:var(--text-muted);font-size:0.75rem;">Generated: ${esc(data.generatedAt)}</p>
+      <p style="color:var(--text-muted);font-size:0.75rem;">Generated: ${esc(formatTs(data.generatedAt))}</p>
     `;
   } catch (err) {
     document.getElementById("stats-content").innerHTML = `<p>Error: ${esc(err.message)}</p>`;
@@ -298,7 +306,7 @@ async function loadAudit() {
     }
     tbody.innerHTML = data.entries.slice().reverse().map((e) => `
       <tr>
-        <td>${esc(e.ts?.slice(0, 16).replace("T", " ") || "—")}</td>
+        <td>${esc(formatTs(e.ts))}</td>
         <td>${esc(e.action)}</td>
         <td>${esc(e.key || "—")}</td>
         <td>${esc(e.detail || "—")}</td>
