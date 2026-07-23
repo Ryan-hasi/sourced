@@ -55,9 +55,8 @@ async function loadClerkSDK(key) {
 
 async function checkSession() {
   try {
-    const res = await fetch(`${API_BASE}/api/dashboard/session`, {
-      credentials: "include",
-    });
+    const headers = sessionToken ? { "Authorization": `Bearer ${sessionToken}` } : {};
+    const res = await fetch(`${API_BASE}/api/dashboard/session`, { headers });
     const data = await res.json();
     if (data.publishableKey) {
       clerkPublishableKey = data.publishableKey;
@@ -69,20 +68,6 @@ async function checkSession() {
   } catch (err) {
     console.warn("Session endpoint check failed:", err);
   }
-
-  // Load Clerk JS SDK and check active session
-  if (clerkPublishableKey || window.Clerk) {
-    const clerk = await loadClerkSDK(clerkPublishableKey);
-    if (clerk && clerk.session) {
-      try {
-        sessionToken = await clerk.session.getToken();
-        if (sessionToken) return true;
-      } catch (e) {
-        console.warn("Failed to get Clerk session token:", e);
-      }
-    }
-  }
-
   return false;
 }
 
@@ -97,6 +82,14 @@ async function mountClerkSignIn() {
   const clerk = await loadClerkSDK(clerkPublishableKey);
   if (clerk && mountEl) {
     mountEl.innerHTML = "";
+    clerk.addListener(async ({ session }) => {
+      if (session) {
+        try {
+          sessionToken = await session.getToken();
+          if (sessionToken) showDashboard();
+        } catch { /* ignore */ }
+      }
+    });
     clerk.mountSignIn(mountEl, {
       appearance: {
         variables: {
@@ -108,7 +101,6 @@ async function mountClerkSignIn() {
           borderRadius: "8px"
         }
       },
-      afterSignInUrl: window.location.href,
       signUpUrl: "https://accounts.sourced.run/sign-up"
     });
   } else {
