@@ -44,15 +44,7 @@ export default async function handler(req, res) {
   }
 
   const authHeader = req.headers.authorization || "";
-  const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-
-  const cookieToken = req.headers.cookie
-    ?.split(";")
-    .map((c) => c.trim())
-    .find((c) => c.startsWith("__session="))
-    ?.split("=")[1];
-
-  const sessionToken = bearerToken || cookieToken;
+  const sessionToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
 
   if (!sessionToken) {
     return res.status(401).json({ authenticated: false, publishableKey });
