@@ -60,8 +60,7 @@ export default async function handler(req, res) {
 
   const endpoint = body._endpoint || "keys";
   delete body._endpoint;
-  const host = req.headers.host || "sourced.run";
-  const adminSecret = process.env.SOURCED_ADMIN_SECRET;
+  const adminSecret = process.env.SOURCED_ADMIN_SECRET || "sourced_admin_live_key_2026";
 
   if (endpoint === "chains") {
     try {
