@@ -52,6 +52,10 @@ for (const app of ["ink", "run", "network"]) {
 const clerkDist = join(root, "node_modules/@clerk/clerk-js/dist");
 const clerkTarget = join(root, "apps/run/dashboard/clerk");
 if (existsSync(clerkDist)) {
-  cpSync(clerkDist, clerkTarget, { recursive: true });
-  console.log("synced apps/run/dashboard/clerk/ (Clerk JS SDK)");
+  try {
+    cpSync(clerkDist, clerkTarget, { recursive: true, force: true });
+    console.log("synced apps/run/dashboard/clerk/ (Clerk JS SDK)");
+  } catch (err) {
+    console.log("notice: clerk sdk sync skipped (target active)");
+  }
 }
