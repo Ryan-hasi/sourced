@@ -135,6 +135,10 @@ async function mountClerkSignIn() {
 
   try {
     clerk.mountSignIn(mountEl, {
+      forceRedirectUrl: `${window.location.origin}/dashboard/`,
+      fallbackRedirectUrl: `${window.location.origin}/dashboard/`,
+      afterSignInUrl: `${window.location.origin}/dashboard/`,
+      signUpUrl: `${window.location.origin}/dashboard/`,
       appearance: {
         variables: {
           colorPrimary: "#e5484d",
@@ -488,9 +492,20 @@ window.addEventListener("beforeunload", () => {
   const clerk = await getClerk();
   if (clerk && clerk.session) {
     try {
-      await clerk.signOut();
+      sessionToken = await clerk.session.getToken();
+      if (sessionToken) {
+        const authResult = await verifySessionToken(sessionToken);
+        isInitializingPage = false;
+        if (authResult.status === "authorized") {
+          showDashboard(authResult.email);
+          return;
+        } else if (authResult.status === "denied") {
+          showAccessDenied(authResult.email, authResult.reason);
+          return;
+        }
+      }
     } catch (e) {
-      console.warn("Sign out on refresh failed:", e);
+      console.warn("Session check error on init:", e);
     }
   }
 
