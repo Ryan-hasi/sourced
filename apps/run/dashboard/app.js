@@ -108,22 +108,10 @@ async function checkSession() {
 
 async function mountClerkSignIn() {
   const mountEl = document.getElementById("auth-mount");
-  if (!clerkPublishableKey) {
-    if (mountEl) {
-      mountEl.innerHTML = `
-        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);padding:1.5rem;border-radius:10px;max-width:460px;margin:0 auto;text-align:center;">
-          <div style="font-weight:600;color:#f87171;margin-bottom:0.5rem;font-size:1rem;">Sourced Clerk App Required</div>
-          <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 1rem;line-height:1.4;">
-            Please set <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> and <code>CLERK_SECRET_KEY</code> in Vercel for the Sourced project to enable authentication.
-          </p>
-        </div>
-      `;
-    }
-    return;
-  }
-  const clerk = await loadClerkSDK(clerkPublishableKey);
+  if (!mountEl) return;
 
-  if (clerk && mountEl) {
+  const clerk = await loadClerkSDK(clerkPublishableKey);
+  if (clerk) {
     mountEl.innerHTML = "";
     clerk.addListener(async ({ session }) => {
       if (session) {
@@ -151,18 +139,8 @@ async function mountClerkSignIn() {
         }
       });
     } catch (err) {
-      mountEl.innerHTML = `<div style="color:#f87171;padding:1rem;">Failed to render Sign-In form: ${esc(err.message)}</div>`;
+      console.error("Clerk mountSignIn failed:", err);
     }
-  } else if (mountEl) {
-    mountEl.innerHTML = `
-      <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:1.5rem;border-radius:8px;max-width:440px;margin:0 auto;">
-        <div style="font-weight:600;color:#f87171;margin-bottom:0.5rem;">Authentication Configuration Required</div>
-        <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 1rem;line-height:1.4;">
-          The Clerk authentication SDK could not be initialized. Make sure <code>CLERK_SECRET_KEY</code> and <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> are configured in Vercel.
-        </p>
-        <button class="btn btn-primary" onclick="window.location.reload()">Retry Loading</button>
-      </div>
-    `;
   }
 }
 
