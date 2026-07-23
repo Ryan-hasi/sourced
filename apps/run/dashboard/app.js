@@ -188,12 +188,9 @@ async function mountClerkSignIn() {
     return;
   }
 
-  // Unmount any previous sign-in instance to avoid double-mount errors.
-  if (signInMounted) {
-    try { clerk.unmountSignIn(mountEl); } catch {}
-  }
-
-  mountEl.innerHTML = "";
+  // Do NOT unmount if already mounted — unmounting resets multi-step forms
+  // (e.g. entering the 6-digit email verification code).
+  if (signInMounted && mountEl.childElementCount > 0) return;
 
   try {
     const dashboardUrl = `${window.location.origin}/dashboard/`;
@@ -275,6 +272,7 @@ async function proxy(endpoint, body = {}) {
 
 async function signOut() {
   sessionToken = null;
+  signInMounted = false;
   const clerk = clerkInstance || window.Clerk;
   if (clerk && clerk.signOut) {
     try { await clerk.signOut(); } catch {}
