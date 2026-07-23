@@ -57,6 +57,27 @@ body {
 .nav a:hover { color: var(--ink); }
 .nav a.here { color: var(--ink); border-bottom: 2px solid var(--signal); }
 
+/* control deck CTA button */
+.btn-deck {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  font-weight: 700;
+  color: var(--signal);
+  border: 1px solid rgba(212, 17, 30, 0.35);
+  background: rgba(212, 17, 30, 0.08);
+  padding: 5px 11px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all .15s ease;
+  white-space: nowrap;
+}
+.btn-deck:hover {
+  background: var(--signal);
+  color: #ffffff;
+  border-color: var(--signal);
+}
+
 /* theme toggle */
 .mode {
   width: 32px; height: 32px; border-radius: 7px; cursor: pointer;
