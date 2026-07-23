@@ -131,10 +131,37 @@ async function mountClerkSignIn() {
           variables: {
             colorPrimary: "#e5484d",
             colorBackground: "#12141d",
-            colorText: "#f3f4f6",
-            colorInputBackground: "#090a0f",
+            colorText: "#ffffff",
+            colorTextSecondary: "#a1a1aa",
+            colorTextOnPrimaryBackground: "#ffffff",
+            colorInputBackground: "#181b26",
             colorInputText: "#ffffff",
             borderRadius: "8px"
+          },
+          elements: {
+            socialButtonsBlockButton: {
+              backgroundColor: "#1c202e !important",
+              borderColor: "rgba(255, 255, 255, 0.18) !important",
+              color: "#ffffff !important",
+            },
+            socialButtonsBlockButtonText: {
+              color: "#ffffff !important",
+              fontWeight: "600 !important",
+              opacity: "1 !important"
+            },
+            socialButtonsBlockButtonArrow: {
+              color: "#ffffff !important"
+            },
+            formFieldLabel: {
+              color: "#e4e4e7 !important"
+            },
+            footerActionText: {
+              color: "#a1a1aa !important"
+            },
+            footerActionLink: {
+              color: "#e5484d !important",
+              fontWeight: "600 !important"
+            }
           }
         }
       });
