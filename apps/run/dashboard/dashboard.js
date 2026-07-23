@@ -310,6 +310,47 @@ async function loadAudit() {
   }
 }
 
+async function exportAuditLog(format = "json") {
+  try {
+    const data = await proxy("keys", { action: "audit", limit: 200 });
+    const entries = data.entries || [];
+    if (entries.length === 0) return showToast("No log entries available to export");
+
+    let content = "";
+    let mimeType = "application/json";
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `sourced-telemetry-errors-${timestamp}.${format}`;
+
+    if (format === "csv") {
+      mimeType = "text/csv";
+      const headers = ["Timestamp", "Action", "Key", "Detail", "IP"];
+      const rows = entries.map((e) => [
+        `"${e.ts || ""}"`,
+        `"${e.action || ""}"`,
+        `"${e.key || ""}"`,
+        `"${String(e.detail || "").replace(/"/g, '""')}"`,
+        `"${e.ip || ""}"`,
+      ]);
+      content = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    } else {
+      content = JSON.stringify(entries, null, 2);
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${entries.length} log entries as ${format.toUpperCase()}`);
+  } catch (err) {
+    showToast(`Export error: ${err.message}`);
+  }
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────
 (async function init() {
   const isAuth = await checkSession();

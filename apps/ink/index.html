@@ -64,7 +64,8 @@
   <a href="#api">9 · Hosted API</a>
   <a href="#conformance">10 · Conformance</a>
   <a href="#log">11 · Transparency log</a>
-  <a href="#packages">12 · Packages, status, license</a>
+  <a href="#faq">12 · Error FAQ & Troubleshooting</a>
+  <a href="#packages">13 · Packages, status, license</a>
 </nav>
 
 <section id="overview">
@@ -386,8 +387,60 @@
   </p>
 </section>
 
+<section id="faq">
+  <h2><span class="no">12</span>Error FAQ & Troubleshooting</h2>
+  <p>
+    Reference for common HTTP status codes, API response errors, and troubleshooting steps across the Sourced network and API endpoints:
+  </p>
+  <div class="tablebox"><table>
+    <tr><th>HTTP Status</th><th>Error Code / Payload</th><th>Root Cause</th><th>Resolution Step</th></tr>
+    <tr>
+      <td><code>401 Unauthorized</code></td>
+      <td><code>"malformed key (expected sk_src_…)"</code></td>
+      <td>Missing or invalid <code>Authorization: Bearer</code> header format.</td>
+      <td>Ensure key starts with <code>sk_src_</code>. Alternatively pass <code>X-Sourced-Key</code> header.</td>
+    </tr>
+    <tr>
+      <td><code>401 Unauthorized</code></td>
+      <td><code>"unknown or revoked key"</code></td>
+      <td>The provided API key is disabled, revoked, or non-existent in KV.</td>
+      <td>Check key status in the Control Deck or request a replacement key at <code>hello@tickwire.news</code>.</td>
+    </tr>
+    <tr>
+      <td><code>401 Unauthorized</code></td>
+      <td><code>"missing Clerk session token"</code></td>
+      <td>Dashboard proxy attempt without an active Clerk JWT.</td>
+      <td>Sign in via Clerk on the Control Deck (<code>sourced.run/dashboard/</code>) to renew session.</td>
+    </tr>
+    <tr>
+      <td><code>429 Too Many Requests</code></td>
+      <td><code>"rate limit: N requests/minute"</code></td>
+      <td>Per-minute budget exceeded (anon: 60/min, key: 600/min, append: 30/min).</td>
+      <td>Inspect <code>Retry-After</code> header (seconds). Acquire an API key to raise limits 10x.</td>
+    </tr>
+    <tr>
+      <td><code>400 Bad Request</code></td>
+      <td><code>"name required"</code> / <code>"invalid JSON"</code></td>
+      <td>Malformed JSON body or missing required request parameters.</td>
+      <td>Verify payload structure against openapi spec; check required <code>id</code>, <code>title</code>, <code>origin</code>, <code>publishedAt</code>.</td>
+    </tr>
+    <tr>
+      <td><code>503 Service Unavailable</code></td>
+      <td><code>"CLERK_SECRET_KEY not configured"</code></td>
+      <td>Environment variable missing on deployment.</td>
+      <td>Configure <code>CLERK_SECRET_KEY</code> and <code>SOURCED_ADMIN_SECRET</code> in Vercel environment settings.</td>
+    </tr>
+    <tr>
+      <td><code>502 Bad Gateway</code></td>
+      <td><code>"verification failed: ..."</code></td>
+      <td>Upstream Clerk REST API or KV lookup network timeout.</td>
+      <td>Sourced fails open for public read streams (G7). For admin proxy commands, retry the request.</td>
+    </tr>
+  </table></div>
+</section>
+
 <section id="packages">
-  <h2><span class="no">12</span>Packages, status, license</h2>
+  <h2><span class="no">13</span>Packages, status, license</h2>
   <div class="tablebox"><table>
     <tr><th>Package</th><th>Contents</th><th>Runtime deps</th></tr>
     <tr><td>@sourcedhq/core</td><td>The primitive: <code>assess()</code>, types, <code>createMemoryStore()</code>.</td><td>none</td></tr>
