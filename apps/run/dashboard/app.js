@@ -1,12 +1,12 @@
 /**
  * Sourced Control Deck — Application Logic.
  *
- * Auth flow (SPA, no page redirects):
+ * Auth Flow (SPA):
  *   1. init() loads Clerk with publishable key from /api/dashboard/session
- *   2. If Clerk has an active session → verify server-side → show dashboard or access-denied
- *   3. If no session → show Clerk sign-in component
- *   4. Clerk listener detects sign-in → verify server-side → show dashboard
- *   5. Sign-out button → Clerk.signOut() → redirect to /
+ *   2. If Clerk has an active session → verify server-side via /api/dashboard/session
+ *   3. If authorized → show dashboard; if denied → show access-denied screen
+ *   4. If no active session → show Clerk sign-in component (Google, GitHub, Email)
+ *   5. Sign-out button → Clerk.signOut() → redirect to / (sourced.run)
  */
 
 const API_BASE = window.location.origin;
@@ -54,6 +54,8 @@ async function fetchPublishableKey() {
 
 /**
  * Load Clerk JS SDK exactly once. Returns the Clerk instance or null.
+ * Clerk is loaded with touchSession:false so it does NOT auto-restore
+ * cookies — we control session lifecycle entirely in init().
  */
 async function loadClerk() {
   if (clerkInstance) return clerkInstance;
@@ -198,6 +200,10 @@ async function mountClerkSignIn() {
     clerk.mountSignIn(mountEl, {
       forceRedirectUrl: dashboardUrl,
       fallbackRedirectUrl: dashboardUrl,
+      signInForceRedirectUrl: dashboardUrl,
+      signInFallbackRedirectUrl: dashboardUrl,
+      signUpForceRedirectUrl: dashboardUrl,
+      signUpFallbackRedirectUrl: dashboardUrl,
       appearance: {
         variables: {
           colorPrimary: "#e5484d",
@@ -507,17 +513,6 @@ function exportAuditLog(format) {
 /* ── Init ─────────────────────────────────────────────────────────────── */
 
 /**
- * Detect if this page load is a return from an OAuth redirect.
- * Clerk appends __clerk_status or __clerk_db_jwt to the URL after OAuth.
- * We also check for a fresh sign-in flag we set ourselves.
- */
-function isOAuthReturn() {
-  const params = new URLSearchParams(window.location.search);
-  return params.has("__clerk_status") || params.has("__clerk_db_jwt") ||
-         params.has("__clerk_ticket") || params.has("__clerk_created_session");
-}
-
-/**
  * Clean Clerk query params from the URL bar without triggering a page reload.
  */
 function cleanUrl() {
@@ -543,8 +538,7 @@ function cleanUrl() {
     return;
   }
 
-  // Attach the session listener ONCE — drives all auth state transitions
-  // (fires when user completes sign-in via mounted component).
+  // Attach session listener — handles sign-ins inside the mounted UI.
   clerk.addListener(async ({ session }) => {
     if (session) {
       try {
@@ -556,47 +550,42 @@ function cleanUrl() {
             showDashboard(result.email);
           } else if (result.status === "denied") {
             showAccessDenied(result.email, result.reason);
+          } else {
+            showAuth();
           }
         }
       } catch (err) {
         console.error("Session listener error:", err);
       }
+    } else {
+      showAuth();
     }
   });
 
-  const oauthReturn = isOAuthReturn();
   cleanUrl();
 
+  // If a valid session exists in Clerk, verify server-side.
   if (clerk.session) {
-    if (oauthReturn) {
-      // OAuth just completed — verify the fresh session.
-      try {
-        const token = await clerk.session.getToken();
-        if (token) {
-          sessionToken = token;
-          const result = await verifySessionToken(token);
-          if (result.status === "authorized") {
-            showDashboard(result.email);
-            return;
-          }
-          if (result.status === "denied") {
-            showAccessDenied(result.email, result.reason);
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn("OAuth session check failed:", err);
-      }
-    }
-
-    // NOT an OAuth return — this is a page refresh or direct visit.
-    // Enforce ephemeral session: sign out the stale session first.
     try {
-      await clerk.signOut();
-    } catch {}
-    sessionToken = null;
+      const token = await clerk.session.getToken();
+      if (token) {
+        sessionToken = token;
+        const result = await verifySessionToken(token);
+        if (result.status === "authorized") {
+          showDashboard(result.email);
+          return;
+        }
+        if (result.status === "denied") {
+          showAccessDenied(result.email, result.reason);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Session verification error:", err);
+    }
   }
 
-  // No valid session — show sign-in.
+  // No active session -> display sign-in component.
   showAuth();
 })();
+
