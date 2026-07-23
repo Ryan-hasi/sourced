@@ -28,7 +28,7 @@ function parseJwt(token) {
 
 function setCors(req, res) {
   const origin = req.headers.origin || "";
-  const allowed = ["https://sourced.run", "http://localhost:4181"];
+  const allowed = ["https://sourced.run", "https://www.sourced.run", "http://localhost:4181"];
   if (process.env.SOURCED_DASHBOARD_ORIGIN) allowed.push(process.env.SOURCED_DASHBOARD_ORIGIN);
   if (allowed.includes(origin) || !origin) {
     res.setHeader("Access-Control-Allow-Origin", origin || "https://sourced.run");
@@ -124,7 +124,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY || "pk_live_Y2xlcmsudGlja3dpcmUubmV3cyQ";
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY || "";
   const secretKey = process.env.CLERK_SECRET_KEY;
 
   if (!secretKey) {
