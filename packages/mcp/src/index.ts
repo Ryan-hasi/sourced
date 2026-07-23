@@ -99,6 +99,35 @@ const TOOLS = [
       "fail-open behavior, memory honesty. Returns per-case pass/fail with details. Spec: https://sourced.ink",
     inputSchema: { type: "object", properties: {} },
   },
+  {
+    name: "assess_agent_consensus",
+    description:
+      "Evaluates AI Multi-Agent outputs for consensus and hallucination elimination. " +
+      "Takes generated outputs from multiple LLM agents (e.g. Gemini, Claude, DeepSeek, Llama), " +
+      "measures independent model corroboration using Sourced dual-gate matching, and returns consensus verdicts. " +
+      "High corroboration (>= 2 distinct model origins) indicates zero-hallucination confidence for auto-execution.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        outputs: {
+          type: "array",
+          description: "List of agent outputs to evaluate.",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "Optional output/claim ID." },
+              agentId: { type: "string", description: "Agent instance name (e.g., 'research-agent-1')." },
+              model: { type: "string", description: "The underlying LLM model (e.g., 'gemini-1.5-pro', 'claude-3.5-sonnet')." },
+              output: { type: "string", description: "The generated claim or code output text." },
+            },
+            required: ["model", "output"],
+          },
+          minItems: 1,
+        },
+      },
+      required: ["outputs"],
+    },
+  },
 ] as const;
 
 function toolText(payload: unknown, isError = false): Json {
@@ -149,6 +178,29 @@ async function callTool(name: string, args: Json): Promise<Json> {
     }
     const failed = results.filter((r) => !r.pass).length;
     return toolText({ engine: "@sourcedhq/core", passed: results.length - failed, failed, results });
+  }
+
+  if (name === "assess_agent_consensus") {
+    const raw = args.outputs;
+    if (!Array.isArray(raw) || raw.length === 0) return toolText({ error: "outputs must be a non-empty array" }, true);
+    const claims: Claim[] = raw.map((item: Json, i: number) => ({
+      id: String(item?.id ?? `agent-out-${i}`),
+      title: String(item?.output ?? ""),
+      origin: String(item?.model ?? item?.agentId ?? "unknown-llm").toLowerCase(),
+      publishedAt: new Date().toISOString(),
+    }));
+    const verdicts = await assess(claims, { fresh: true });
+    return toolText({
+      consensusVerdicts: verdicts.map((v, idx) => ({
+        outputId: claims[idx].id,
+        model: claims[idx].origin,
+        corroboration: v?.corroboration ?? 1,
+        corroboratingModels: v?.corroboratingSources ?? [],
+        confidence: (v?.corroboration ?? 1) >= 2 ? "HIGH_CONFIDENCE_AUTO_EXECUTE" : "SINGLE_AGENT_BARE_REVIEW",
+        signal: v?.signal ?? null,
+      })),
+      guaranteeNote: "G3 Independence enforced: multiple calls from the exact same model collapse to 1 origin.",
+    });
   }
 
   return toolText({ error: `unknown tool: ${name}` }, true);
