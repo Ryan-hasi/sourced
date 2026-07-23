@@ -101,6 +101,51 @@ for v in res.json()["verdicts"]:
         print(f"{v['corroboration']} sources, signal={v['signal']}")
 ```
 
+### Go (`net/http`)
+```go
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
+
+func main() {
+	payload, _ := json.Marshal(map[string]any{"claims": claims})
+	req, _ := http.NewRequest("POST", "https://sourced.run/api/v1/assess", bytes.NewBuffer(payload))
+	req.Header.Set("Content-Type", "application/json")
+	if apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil { panic(err) }
+	defer resp.Body.Close()
+	fmt.Println("Status:", resp.Status)
+}
+```
+
+### Rust (`reqwest`)
+```rust
+use serde_json::json;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std.error.Error>> {
+    const KEY: &str = "sk_src_...";
+    let client = reqwest::Client::new();
+    let res = client.post("https://sourced.run/api/v1/assess")
+        .bearer_auth(KEY)
+        .json(&json!({ "claims": claims }))
+        .send()
+        .await?;
+
+    println!("Response: {:?}", res.text().await?);
+    Ok(())
+}
+```
+
 ## 6. Use cases beyond news
 
 The primitive works on any stream of `(claim, origin, timestamp)`:
