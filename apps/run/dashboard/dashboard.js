@@ -55,19 +55,27 @@ async function loadClerkSDK(key) {
 
 async function checkSession() {
   try {
-    const headers = sessionToken ? { "Authorization": `Bearer ${sessionToken}` } : {};
-    const res = await fetch(`${API_BASE}/api/dashboard/session`, { headers });
+    const res = await fetch(`${API_BASE}/api/dashboard/session`);
     const data = await res.json();
     if (data.publishableKey) {
       clerkPublishableKey = data.publishableKey;
     }
-    if (data.authenticated && data.token) {
-      sessionToken = data.token;
-      return true;
-    }
   } catch (err) {
     console.warn("Session endpoint check failed:", err);
   }
+
+  if (clerkPublishableKey || window.Clerk) {
+    const clerk = await loadClerkSDK(clerkPublishableKey);
+    if (clerk && clerk.session) {
+      try {
+        sessionToken = await clerk.session.getToken();
+        if (sessionToken) return true;
+      } catch (e) {
+        console.warn("Failed to get Clerk session token:", e);
+      }
+    }
+  }
+
   return false;
 }
 
