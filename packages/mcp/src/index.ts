@@ -13,7 +13,7 @@
  * The protocol layer is hand-rolled JSON-RPC 2.0 (MCP stdio transport is
  * newline-delimited JSON) — no dependencies beyond the Sourced packages.
  */
-import { assess, createMemoryStore, DEFAULT_CONFIG, type Claim } from "@sourcedhq/core";
+import { assess, createMemoryStore, DEFAULT_CONFIG, type Claim, type Verdict } from "@sourcedhq/core";
 import { verify, type LogRecord } from "@sourcedhq/log";
 import { CASES } from "@sourcedhq/conformance";
 
@@ -189,9 +189,9 @@ async function callTool(name: string, args: Json): Promise<Json> {
       origin: String(item?.model ?? item?.agentId ?? "unknown-llm").toLowerCase(),
       publishedAt: new Date().toISOString(),
     }));
-    const verdicts = await assess(claims, { fresh: true });
+    const verdicts = await assess(claims, {});
     return toolText({
-      consensusVerdicts: verdicts.map((v, idx) => ({
+      consensusVerdicts: verdicts.map((v: Verdict | null, idx: number) => ({
         outputId: claims[idx].id,
         model: claims[idx].origin,
         corroboration: v?.corroboration ?? 1,

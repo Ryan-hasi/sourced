@@ -310,15 +310,15 @@ export const CASES: ConformanceCase[] = [
       const retired: unknown[] = [];
       await assess(
         [claim("a", "City council approves new tramline extension plan", "outlet-a")],
-        { now: T0, store, archive: (evs) => void retired.push(...evs) },
+        { now: T0, store, archive: (evs: any[]) => void retired.push(...evs) },
       );
       // 48 h later (past the 36 h TTL) an unrelated claim triggers a fold.
       await assess(
         [claim("b", "Astronomers discover unusual binary star system nearby", "outlet-b")],
-        { now: T0 + 48 * 3_600_000, store, archive: (evs) => void retired.push(...evs) },
+        { now: T0 + 48 * 3_600_000, store, archive: (evs: any[]) => void retired.push(...evs) },
       );
       const snapshot = store.snapshot();
-      const stillThere = Object.values(snapshot).some((e) => e.title.includes("tramline"));
+      const stillThere = Object.values(snapshot).some((e: any) => e?.title?.includes("tramline"));
       if (stillThere) return fail(this.id, this.guarantee, "expired event still in working set");
       return retired.length === 1
         ? ok(this.id, this.guarantee, "expired event retired into the archive sink")

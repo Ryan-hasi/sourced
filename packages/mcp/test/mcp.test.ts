@@ -23,10 +23,10 @@ describe("@sourcedhq/mcp — protocol", () => {
     expect(await handle({ jsonrpc: "2.0", method: "notifications/initialized" })).toBeNull();
   });
 
-  it("tools/list exposes the three tools with schemas", async () => {
+  it("tools/list exposes the four tools with schemas", async () => {
     const res = await rpc("tools/list");
     const tools = (res?.result as { tools: { name: string; inputSchema: unknown }[] }).tools;
-    expect(tools.map((t) => t.name)).toEqual(["assess", "verify_chain", "run_conformance"]);
+    expect(tools.map((t) => t.name)).toEqual(["assess", "verify_chain", "run_conformance", "assess_agent_consensus"]);
     for (const t of tools) expect(t.inputSchema).toBeTruthy();
   });
 
@@ -74,5 +74,20 @@ describe("@sourcedhq/mcp — tools", () => {
     const r = toolResult(await rpc("tools/call", { name: "run_conformance", arguments: {} }));
     expect(r.failed).toBe(0);
     expect(r.passed).toBeGreaterThanOrEqual(14);
+  });
+
+  it("assess_agent_consensus measures multi-model LLM output corroboration", async () => {
+    const r = toolResult(await rpc("tools/call", {
+      name: "assess_agent_consensus",
+      arguments: {
+        outputs: [
+          { model: "gemini-1.5-pro", output: "Database migration requires rebuilding user indices" },
+          { model: "claude-3.5-sonnet", output: "Database migration requires rebuilding user indices" },
+        ],
+      },
+    }));
+    expect(r.consensusVerdicts).toHaveLength(2);
+    expect(r.consensusVerdicts[1].corroboration).toBe(2);
+    expect(r.consensusVerdicts[1].confidence).toBe("HIGH_CONFIDENCE_AUTO_EXECUTE");
   });
 });
