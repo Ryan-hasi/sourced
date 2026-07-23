@@ -1,7 +1,6 @@
 /**
- * Sourced Dashboard — no Clerk SDK needed.
- * Session check via server-side /api/dashboard/session endpoint.
- * Auth via Clerk Account Portal redirect.
+ * Sourced Dashboard.
+ * Dual-mode auth: Clerk JS SDK integration with fallback to server-side /api/dashboard/session token verification.
  */
 
 const API_BASE = window.location.origin;
@@ -9,6 +8,7 @@ const SIGN_IN_URL = "https://accounts.sourced.run/sign-in";
 const SIGN_UP_URL = "https://accounts.sourced.run/sign-up";
 
 let sessionToken = null;
+let clerkPublishableKey = null;
 
 function esc(s) {
   if (s == null) return "";
@@ -24,23 +24,68 @@ function showToast(msg, duration = 3000) {
   setTimeout(() => t.classList.remove("show"), duration);
 }
 
+async function loadClerkSDK(key) {
+  if (window.Clerk) return window.Clerk;
+  if (!key) return null;
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.setAttribute("data-clerk-publishable-key", key);
+    script.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
+    script.async = true;
+    script.onload = async () => {
+      try {
+        if (window.Clerk) {
+          await window.Clerk.load();
+          resolve(window.Clerk);
+        } else {
+          resolve(null);
+        }
+      } catch {
+        resolve(null);
+      }
+    };
+    script.onerror = () => resolve(null);
+    document.head.appendChild(script);
+  });
+}
+
 async function checkSession() {
   try {
     const res = await fetch(`${API_BASE}/api/dashboard/session`, {
       credentials: "include",
     });
     const data = await res.json();
+    if (data.publishableKey) {
+      clerkPublishableKey = data.publishableKey;
+    }
     if (data.authenticated && data.token) {
       sessionToken = data.token;
       return true;
     }
-    return false;
-  } catch {
-    return false;
+  } catch (err) {
+    console.warn("Session endpoint check failed:", err);
   }
+
+  // Attempt Clerk SDK authentication if publishable key exists
+  if (clerkPublishableKey || window.Clerk) {
+    const clerk = await loadClerkSDK(clerkPublishableKey);
+    if (clerk && clerk.session) {
+      try {
+        sessionToken = await clerk.session.getToken();
+        if (sessionToken) return true;
+      } catch (e) {
+        console.warn("Failed to get Clerk session token:", e);
+      }
+    }
+  }
+
+  return false;
 }
 
 async function proxy(endpoint, body = {}) {
+  if (!sessionToken && window.Clerk && window.Clerk.session) {
+    try { sessionToken = await window.Clerk.session.getToken(); } catch { /* ignore */ }
+  }
   if (!sessionToken) throw new Error("not authenticated");
   const res = await fetch(`${API_BASE}/api/dashboard/proxy`, {
     method: "POST",
@@ -73,14 +118,37 @@ function showAuth() {
     <div style="text-align:center;">
       <h2 style="margin-bottom:0.5rem;font-size:1.5rem;">Sourced Dashboard</h2>
       <p style="color:var(--text-muted);margin-bottom:1.5rem;">Sign in to manage API keys, chains, and view stats.</p>
-      <a href="${SIGN_IN_URL}?redirect_url=${redirectUrl}" class="btn" style="display:inline-block;padding:0.6rem 2rem;font-size:1rem;text-decoration:none;margin-right:0.5rem;">Sign In</a>
-      <a href="${SIGN_UP_URL}?redirect_url=${redirectUrl}" class="btn" style="display:inline-block;padding:0.6rem 2rem;font-size:1rem;text-decoration:none;border-color:var(--signal-red,#d4111e);color:var(--signal-red,#d4111e);">Sign Up</a>
+      <button onclick="handleSignIn()" class="btn" style="display:inline-block;padding:0.6rem 2rem;font-size:1rem;margin-right:0.5rem;cursor:pointer;">Sign In</button>
+      <button onclick="handleSignUp()" class="btn" style="display:inline-block;padding:0.6rem 2rem;font-size:1rem;border-color:var(--signal-red,#d4111e);color:var(--signal-red,#d4111e);cursor:pointer;">Sign Up</button>
     </div>
   `;
 }
 
-function signOut() {
-  window.location.href = `https://accounts.sourced.run/sign-out?redirect_url=${encodeURIComponent(window.location.href)}`;
+function handleSignIn() {
+  const redirectUrl = window.location.href;
+  if (window.Clerk && window.Clerk.redirectToSignIn) {
+    window.Clerk.redirectToSignIn({ returnBackUrl: redirectUrl });
+  } else {
+    window.location.href = `${SIGN_IN_URL}?redirect_url=${encodeURIComponent(redirectUrl)}`;
+  }
+}
+
+function handleSignUp() {
+  const redirectUrl = window.location.href;
+  if (window.Clerk && window.Clerk.redirectToSignUp) {
+    window.Clerk.redirectToSignUp({ returnBackUrl: redirectUrl });
+  } else {
+    window.location.href = `${SIGN_UP_URL}?redirect_url=${encodeURIComponent(redirectUrl)}`;
+  }
+}
+
+async function signOut() {
+  if (window.Clerk && window.Clerk.signOut) {
+    await window.Clerk.signOut();
+    window.location.reload();
+  } else {
+    window.location.href = `https://accounts.sourced.run/sign-out?redirect_url=${encodeURIComponent(window.location.href)}`;
+  }
 }
 
 // ── Tab navigation ──────────────────────────────────────────────────────
