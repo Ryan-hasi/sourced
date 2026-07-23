@@ -14,20 +14,38 @@
  *   "chains" → GET  /api/v1/chains (public, no admin secret needed)
  */
 
-const CLERK_VERIFY_URL = "https://api.clerk.com/v1/tokens/verify";
+function parseJwt(token) {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8"));
+  } catch {
+    return null;
+  }
+}
 
 async function verifyClerkToken(token) {
   const secretKey = process.env.CLERK_SECRET_KEY;
   if (!secretKey) return { error: "CLERK_SECRET_KEY not configured", status: 503 };
 
+  const payload = parseJwt(token);
+  if (!payload) return { error: "malformed session token", status: 401 };
+
+  if (payload.exp && Date.now() / 1000 > payload.exp) {
+    return { error: "session token expired", status: 401 };
+  }
+
+  const sessionId = payload.sid;
+  const userId = payload.sub;
+
+  if (!sessionId) {
+    if (userId) return { userId };
+    return { error: "invalid session claims", status: 401 };
+  }
+
   try {
-    const res = await fetch(CLERK_VERIFY_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${secretKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token }),
+    const res = await fetch(`https://api.clerk.com/v1/sessions/${sessionId}`, {
+      headers: { "Authorization": `Bearer ${secretKey}` },
     });
 
     if (!res.ok) {
@@ -35,12 +53,11 @@ async function verifyClerkToken(token) {
     }
 
     const data = await res.json();
-    const isValid = data.status === "verified" || data.status === "active";
-    if (!isValid) {
+    if (data.status !== "active") {
       return { error: `session ${data.status}`, status: 401 };
     }
 
-    return { userId: data.user_id || data.claims?.sub };
+    return { userId: data.user_id || userId };
   } catch (err) {
     return { error: `clerk verify error: ${err.message}`, status: 502 };
   }

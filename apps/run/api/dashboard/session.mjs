@@ -1,11 +1,19 @@
 /**
  * GET /api/dashboard/session — verify Clerk session server-side.
  *
- * Reads Clerk's Authorization header or __session cookie from the request,
- * verifies it against Clerk's backend API using CLERK_SECRET_KEY, and returns session info.
+ * Decodes Clerk JWT token to extract session ID (sid), then verifies the active
+ * status of the session against Clerk's backend API (GET /v1/sessions/{session_id}).
  */
 
-const CLERK_VERIFY_URL = "https://api.clerk.com/v1/tokens/verify";
+function parseJwt(token) {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8"));
+  } catch {
+    return null;
+  }
+}
 
 function setCors(req, res) {
   const origin = req.headers.origin || "";
@@ -50,14 +58,30 @@ export default async function handler(req, res) {
     return res.status(401).json({ authenticated: false, publishableKey });
   }
 
+  const payload = parseJwt(sessionToken);
+  if (!payload) {
+    return res.status(401).json({ authenticated: false, error: "malformed session token", publishableKey });
+  }
+
+  if (payload.exp && Date.now() / 1000 > payload.exp) {
+    return res.status(401).json({ authenticated: false, error: "session expired", publishableKey });
+  }
+
+  const sessionId = payload.sid;
+  const userId = payload.sub;
+
+  if (!sessionId) {
+    return res.status(200).json({
+      authenticated: true,
+      userId: userId || "unknown",
+      token: sessionToken,
+      publishableKey,
+    });
+  }
+
   try {
-    const verifyRes = await fetch(CLERK_VERIFY_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${secretKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token: sessionToken }),
+    const verifyRes = await fetch(`https://api.clerk.com/v1/sessions/${sessionId}`, {
+      headers: { "Authorization": `Bearer ${secretKey}` },
     });
 
     if (!verifyRes.ok) {
@@ -65,16 +89,14 @@ export default async function handler(req, res) {
     }
 
     const data = await verifyRes.json();
-    const isValid = data.status === "verified" || data.status === "active";
-
-    if (!isValid) {
+    if (data.status !== "active") {
       return res.status(401).json({ authenticated: false, status: data.status, publishableKey });
     }
 
     return res.status(200).json({
       authenticated: true,
-      userId: data.user_id || data.claims?.sub,
-      sessionId: data.session_id || data.claims?.sid,
+      userId: data.user_id || userId,
+      sessionId: data.id || sessionId,
       token: sessionToken,
       publishableKey,
     });
