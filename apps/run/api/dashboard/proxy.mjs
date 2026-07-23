@@ -1,67 +1,16 @@
 /**
  * POST /api/dashboard/proxy — Clerk-authenticated proxy to admin endpoints.
  *
- * The dashboard authenticates via Clerk (browser SDK). This endpoint verifies
- * the Clerk session server-side using CLERK_SECRET_KEY, then proxies to the
- * admin API with SOURCED_ADMIN_SECRET. The browser never sees the admin secret.
+ * Strict Auth Wall:
+ * 1. Verifies Clerk JWT and active session status via Clerk API.
+ * 2. Verifies primary email against admin whitelist (ryan.hasenfratz@gmail.com, hello@tickwire.news, SOURCED_ADMIN_EMAILS).
+ * 3. ONLY authorized admin users are proxied to internal endpoints with SOURCED_ADMIN_SECRET.
  *
  * Body:
  *   { _endpoint: "keys" | "stats" | "chains", action?: string, ...params }
- *
- * _endpoint routing:
- *   "keys"   → POST /api/v1/keys   (with x-admin-secret)
- *   "stats"  → GET  /api/v1/stats  (with x-admin-secret)
- *   "chains" → GET  /api/v1/chains (public, no admin secret needed)
  */
 
-function parseJwt(token) {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8"));
-  } catch {
-    return null;
-  }
-}
-
-async function verifyClerkToken(token) {
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) return { error: "CLERK_SECRET_KEY not configured", status: 503 };
-
-  const payload = parseJwt(token);
-  if (!payload) return { error: "malformed session token", status: 401 };
-
-  if (payload.exp && Date.now() / 1000 > payload.exp) {
-    return { error: "session token expired", status: 401 };
-  }
-
-  const sessionId = payload.sid;
-  const userId = payload.sub;
-
-  if (!sessionId) {
-    if (userId) return { userId };
-    return { error: "invalid session claims", status: 401 };
-  }
-
-  try {
-    const res = await fetch(`https://api.clerk.com/v1/sessions/${sessionId}`, {
-      headers: { "Authorization": `Bearer ${secretKey}` },
-    });
-
-    if (!res.ok) {
-      return { error: `clerk verification failed: ${res.status}`, status: 401 };
-    }
-
-    const data = await res.json();
-    if (data.status !== "active") {
-      return { error: `session ${data.status}`, status: 401 };
-    }
-
-    return { userId: data.user_id || userId };
-  } catch (err) {
-    return { error: `clerk verify error: ${err.message}`, status: 502 };
-  }
-}
+import { verifyAndAuthorizeClerkUser } from "./session.mjs";
 
 function readBody(req) {
   if (req.body !== undefined) {
@@ -78,14 +27,18 @@ function setCors(req, res) {
   const origin = req.headers.origin || "";
   const allowed = ["https://sourced.run", "http://localhost:4181"];
   if (process.env.SOURCED_DASHBOARD_ORIGIN) allowed.push(process.env.SOURCED_DASHBOARD_ORIGIN);
-  if (allowed.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
+  if (allowed.includes(origin) || !origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "https://sourced.run");
   }
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 }
 
 export default async function handler(req, res) {
+  if (!res.status) res.status = (c) => { res.statusCode = c; return res; };
+  if (!res.json) res.json = (o) => { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(o)); return res; };
+
   setCors(req, res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
@@ -94,9 +47,12 @@ export default async function handler(req, res) {
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   if (!token) return res.status(401).json({ error: "missing Clerk session token" });
 
-  const clerkResult = await verifyClerkToken(token);
-  if (clerkResult.error) {
-    return res.status(clerkResult.status || 401).json({ error: clerkResult.error });
+  // Enforce strict Server-Side Clerk verification & admin whitelist check
+  const authResult = await verifyAndAuthorizeClerkUser(token);
+  if (!authResult.authorized || authResult.error) {
+    return res.status(authResult.status || 403).json({
+      error: authResult.error || "Access denied. Account is not an authorized administrator.",
+    });
   }
 
   let body;
@@ -118,7 +74,7 @@ export default async function handler(req, res) {
   }
 
   if (endpoint === "stats") {
-    if (!adminSecret) return res.status(503).json({ error: "admin not configured" });
+    if (!adminSecret) return res.status(503).json({ error: "admin secret not configured (SOURCED_ADMIN_SECRET)" });
     try {
       const proxyRes = await fetch(`https://${host}/api/v1/stats`, {
         headers: { "x-admin-secret": adminSecret },
@@ -130,7 +86,7 @@ export default async function handler(req, res) {
     }
   }
 
-  if (!adminSecret) return res.status(503).json({ error: "admin not configured" });
+  if (!adminSecret) return res.status(503).json({ error: "admin secret not configured (SOURCED_ADMIN_SECRET)" });
   try {
     const proxyRes = await fetch(`https://${host}/api/v1/keys`, {
       method: "POST",

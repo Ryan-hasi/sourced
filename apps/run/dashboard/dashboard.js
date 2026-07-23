@@ -1,7 +1,7 @@
 /**
  * Sourced Dashboard (Control Deck).
  * Strict Clerk auth: mounts Clerk Sign-In component directly into the DOM or redirects to Clerk portal.
- * All API proxy requests require a valid Clerk Session JWT.
+ * All API proxy requests require a valid Clerk Session JWT matching authorized admin emails.
  */
 
 const API_BASE = window.location.origin;
@@ -69,14 +69,30 @@ async function checkSession() {
     if (clerk && clerk.session) {
       try {
         sessionToken = await clerk.session.getToken();
-        if (sessionToken) return true;
       } catch (e) {
         console.warn("Failed to get Clerk session token:", e);
       }
     }
   }
 
-  return false;
+  if (!sessionToken) return { status: "unauthenticated" };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/session`, {
+      headers: { "Authorization": `Bearer ${sessionToken}` },
+    });
+    const data = await res.json();
+    if (res.status === 200 && data.authorized) {
+      return { status: "authorized", email: data.email };
+    }
+    if (data.authenticated && !data.authorized) {
+      return { status: "denied", email: data.email, reason: data.error };
+    }
+  } catch (err) {
+    console.error("Server authorization check failed:", err);
+  }
+
+  return { status: "unauthenticated" };
 }
 
 async function mountClerkSignIn() {
@@ -94,7 +110,11 @@ async function mountClerkSignIn() {
       if (session) {
         try {
           sessionToken = await session.getToken();
-          if (sessionToken) showDashboard();
+          if (sessionToken) {
+            const authResult = await checkSession();
+            if (authResult.status === "authorized") showDashboard(authResult.email);
+            else if (authResult.status === "denied") showAccessDenied(authResult.email, authResult.reason);
+          }
         } catch { /* ignore */ }
       }
     });
@@ -135,22 +155,26 @@ async function proxy(endpoint, body = {}) {
     body: JSON.stringify({ _endpoint: endpoint, ...body }),
   });
   const data = await res.json();
-  if (res.status === 401) {
-    showAuth();
-    throw new Error("Session expired — please sign in again");
+  if (res.status === 401 || res.status === 403) {
+    const isDenied = res.status === 403;
+    if (isDenied) {
+      showAccessDenied("", data.error);
+    } else {
+      showAuth();
+    }
+    throw new Error(data.error || "Authentication failed");
   }
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }
 
-function showDashboard() {
+function showDashboard(email) {
   document.getElementById("auth-container").style.display = "none";
+  document.getElementById("access-denied-container").style.display = "none";
   document.getElementById("dashboard-container").style.display = "block";
-  if (window.Clerk && window.Clerk.user) {
-    const userEl = document.getElementById("user-display");
-    if (userEl) {
-      userEl.textContent = window.Clerk.user.primaryEmailAddress?.emailAddress || window.Clerk.user.username || window.Clerk.user.id;
-    }
+  const userEl = document.getElementById("user-display");
+  if (userEl) {
+    userEl.textContent = email || window.Clerk?.user?.primaryEmailAddress?.emailAddress || "Administrator";
   }
   loadKeys();
   loadChains();
@@ -158,8 +182,17 @@ function showDashboard() {
   loadAudit();
 }
 
+function showAccessDenied(email, reason) {
+  document.getElementById("dashboard-container").style.display = "none";
+  document.getElementById("auth-container").style.display = "none";
+  const deniedEl = document.getElementById("access-denied-container");
+  deniedEl.style.display = "flex";
+  document.getElementById("denied-reason").textContent = reason || `Account (${email || "your account"}) is not an authorized administrator.`;
+}
+
 function showAuth() {
   document.getElementById("dashboard-container").style.display = "none";
+  document.getElementById("access-denied-container").style.display = "none";
   document.getElementById("auth-container").style.display = "flex";
   mountClerkSignIn();
 }
@@ -198,80 +231,67 @@ async function loadKeys() {
         <td>${esc(k.name)}</td>
         <td><span class="badge ${k.status === "active" ? "badge-active" : "badge-disabled"}">${k.status}</span></td>
         <td>${esc(k.createdAt?.slice(0, 10) || "—")}</td>
-        <td>${esc(k.chainId || "—")}</td>
+        <td><code>${esc(k.chainId)}</code></td>
         <td>
-          ${k.status === "active"
-            ? `<button class="btn" onclick="disableKey('${esc(k.key)}')">Disable</button>`
-            : `<button class="btn" onclick="enableKey('${esc(k.key)}')">Enable</button>`}
+          <button class="btn ${k.status === "active" ? "btn-danger" : "btn-primary"}" onclick="toggleKeyStatus('${esc(k.key)}', '${k.status}')">
+            ${k.status === "active" ? "Disable" : "Enable"}
+          </button>
           <button class="btn btn-danger" onclick="revokeKey('${esc(k.key)}')">Revoke</button>
         </td>
       </tr>
     `).join("");
   } catch (err) {
-    document.getElementById("keys-table").innerHTML = `<tr><td colspan="6">Error: ${esc(err.message)}</td></tr>`;
+    const tbody = document.getElementById("keys-table");
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="badge-disabled">Failed: ${esc(err.message)}</td></tr>`;
   }
 }
 
-let keyTimer = null;
-
 async function createKey() {
-  const name = document.getElementById("new-key-name").value.trim();
-  if (!name) return showToast("Name required");
+  const nameInput = document.getElementById("new-key-name");
+  const name = nameInput.value.trim();
+  if (!name) return showToast("Enter a key name first");
   try {
     const data = await proxy("keys", { action: "create", name });
-    if (keyTimer) clearInterval(keyTimer);
-    let secondsLeft = 60;
-    
+    nameInput.value = "";
     document.getElementById("new-key-result").innerHTML = `
-      <div class="card" style="border-color: #4ade80;">
-        <strong>New key (store now — shown once):</strong><br>
-        <code>${esc(data.key)}</code>
-        <div style="font-size:0.8rem; color:#4ade80; margin-top:6px;" id="key-timer-display">⏱ Auto-hiding in ${secondsLeft}s</div>
+      <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);padding:1rem;border-radius:8px;margin-top:1rem;">
+        <div style="font-weight:600;color:#4ade80;">Key Issued! Copy it now — it won't be shown again:</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;">
+          <input value="${esc(data.key)}" readonly style="flex:1;" id="issued-key-val" />
+          <button class="btn btn-primary" onclick="copyToClipboard(document.getElementById('issued-key-val').value, 'API Key')">Copy</button>
+        </div>
       </div>
     `;
-    
-    keyTimer = setInterval(() => {
-      secondsLeft--;
-      const timerEl = document.getElementById("key-timer-display");
-      if (timerEl) timerEl.textContent = `⏱ Auto-hiding in ${secondsLeft}s`;
-      if (secondsLeft <= 0) {
-        clearInterval(keyTimer);
-        const resEl = document.getElementById("new-key-result");
-        if (resEl) resEl.innerHTML = `<div class="card" style="border-color: var(--border-color, #333); color: #8B949E;"><em>Key display timer expired — key destroyed from memory.</em></div>`;
-      }
-    }, 1000);
-
-    document.getElementById("new-key-name").value = "";
     loadKeys();
-    showToast("Key created (60s timer active)");
+    loadAudit();
+  } catch (err) {
+    showToast(`Failed: ${err.message}`);
+  }
+}
+
+async function toggleKeyStatus(keyMask, currentStatus) {
+  const action = currentStatus === "active" ? "disable" : "enable";
+  if (!confirm(`Are you sure you want to ${action} key ${keyMask}?`)) return;
+  try {
+    await proxy("keys", { action, key: keyMask });
+    showToast(`Key ${action}d successfully`);
+    loadKeys();
+    loadAudit();
   } catch (err) {
     showToast(`Error: ${err.message}`);
   }
 }
 
-async function disableKey(keyMasked) {
-  if (!confirm(`Disable ${keyMasked}?`)) return;
-  try { await proxy("keys", { action: "disable", key: keyMasked }); loadKeys(); showToast("Key disabled"); }
-  catch (err) { showToast(`Error: ${err.message}`); }
-}
-
-async function enableKey(keyMasked) {
-  try { await proxy("keys", { action: "enable", key: keyMasked }); loadKeys(); showToast("Key enabled"); }
-  catch (err) { showToast(`Error: ${err.message}`); }
-}
-
-async function revokeKey(keyMasked) {
-  if (!confirm(`Permanently revoke ${keyMasked}? This cannot be undone.`)) return;
-  try { await proxy("keys", { action: "revoke", key: keyMasked }); loadKeys(); loadAudit(); showToast("Key revoked"); }
-  catch (err) { showToast(`Error: ${err.message}`); }
-}
-
-function formatTs(ts) {
-  if (!ts) return "—";
-  if (typeof ts === "number") {
-    try { return new Date(ts).toISOString().slice(0, 16).replace("T", " "); } catch { return String(ts); }
+async function revokeKey(keyMask) {
+  if (!confirm(`REVOKE KEY ${keyMask}? This action is immediate and cannot be undone.`)) return;
+  try {
+    await proxy("keys", { action: "revoke", key: keyMask });
+    showToast("Key revoked");
+    loadKeys();
+    loadAudit();
+  } catch (err) {
+    showToast(`Error: ${err.message}`);
   }
-  return String(ts).slice(0, 16).replace("T", " ");
 }
 
 // ── Chains ───────────────────────────────────────────────────────────────
@@ -280,72 +300,100 @@ async function loadChains() {
     const data = await proxy("chains");
     const tbody = document.getElementById("chains-table");
     if (!data.chains || data.chains.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5">No chains.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5">No active hosted chains.</td></tr>';
       return;
     }
     tbody.innerHTML = data.chains.map((c) => `
       <tr>
-        <td>${esc(c.chainId)}</td>
-        <td>${esc(c.name || "—")}</td>
-        <td>${c.seq ?? "—"}</td>
-        <td title="${esc(c.head || "")}">${esc(String(c.head || "").slice(0, 16))}…</td>
-        <td>${esc(formatTs(c.ts))}</td>
+        <td><code>${esc(c.id)}</code></td>
+        <td>${esc(c.name || "Hosted Chain")}</td>
+        <td>${esc(c.seq)}</td>
+        <td><code>${esc(c.head ? c.head.slice(0, 16) + "…" : "genesis")}</code></td>
+        <td>${esc(c.updatedAt ? new Date(c.updatedAt).toISOString().slice(0, 16).replace("T", " ") : "—")}</td>
       </tr>
     `).join("");
   } catch (err) {
-    document.getElementById("chains-table").innerHTML = `<tr><td colspan="5">Error: ${esc(err.message)}</td></tr>`;
+    const tbody = document.getElementById("chains-table");
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="badge-disabled">Failed: ${esc(err.message)}</td></tr>`;
   }
 }
 
-// ── Stats ────────────────────────────────────────────────────────────────
+// ── Stats / Telemetry ────────────────────────────────────────────────────
 async function loadStats() {
   try {
     const data = await proxy("stats");
-    document.getElementById("stats-content").innerHTML = `
+    const el = document.getElementById("stats-content");
+    el.innerHTML = `
       <div class="stat-grid">
-        <div class="stat-card"><div class="value">${data.keys.total}</div><div class="label">Total Keys</div></div>
-        <div class="stat-card"><div class="value">${data.keys.active}</div><div class="label">Active</div></div>
-        <div class="stat-card"><div class="value">${data.keys.disabled}</div><div class="label">Disabled</div></div>
-        <div class="stat-card"><div class="value">${data.chains.total}</div><div class="label">Chains</div></div>
-        <div class="stat-card"><div class="value">${data.chains.totalRecords}</div><div class="label">Total Records</div></div>
-        <div class="stat-card"><div class="value"><span class="badge ${data.kv.healthy ? "badge-ok" : "badge-err"}">${data.kv.healthy ? "OK" : "DOWN"}</span></div><div class="label">KV Health${data.kv.latencyMs ? ` (${data.kv.latencyMs}ms)` : ""}</div></div>
+        <div class="stat-card">
+          <div class="value">${esc(data.totalKeys ?? 0)}</div>
+          <div class="label">Total Keys</div>
+        </div>
+        <div class="stat-card">
+          <div class="value">${esc(data.activeKeys ?? 0)}</div>
+          <div class="label">Active Keys</div>
+        </div>
+        <div class="stat-card">
+          <div class="value">${esc(data.totalChains ?? 0)}</div>
+          <div class="label">Hosted Chains</div>
+        </div>
+        <div class="stat-card">
+          <div class="value">${esc(data.totalRecords ?? 0)}</div>
+          <div class="label">Total Chain Records</div>
+        </div>
       </div>
-      <p style="color:var(--text-muted);font-size:0.75rem;">Generated: ${esc(formatTs(data.generatedAt))}</p>
+      <div class="card">
+        <h3>KV Storage Telemetry</h3>
+        <table>
+          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Archive Keys Saved</td><td>${esc(data.archiveKeysCount ?? 0)}</td></tr>
+            <tr><td>Total Audit Log Entries</td><td>${esc(data.auditEntriesCount ?? 0)}</td></tr>
+            <tr><td>Server Timestamp</td><td>${esc(data.timestamp || new Date().toISOString())}</td></tr>
+          </tbody>
+        </table>
+      </div>
     `;
   } catch (err) {
-    document.getElementById("stats-content").innerHTML = `<p>Error: ${esc(err.message)}</p>`;
+    const el = document.getElementById("stats-content");
+    if (el) el.innerHTML = `<div class="card"><p class="badge-disabled">Telemetry load failed: ${esc(err.message)}</p></div>`;
   }
 }
 
-// ── Audit ────────────────────────────────────────────────────────────────
+// ── Audit Log ────────────────────────────────────────────────────────────
+let cachedAuditEntries = [];
+
 async function loadAudit() {
   try {
-    const data = await proxy("keys", { action: "audit" });
+    const data = await proxy("keys", { action: "audit", limit: 100 });
     const tbody = document.getElementById("audit-table");
-    if (!data.entries || data.entries.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5">No audit entries.</td></tr>';
+    cachedAuditEntries = data.entries || [];
+    if (cachedAuditEntries.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5">No audit log entries recorded.</td></tr>';
       return;
     }
-    tbody.innerHTML = data.entries.slice().reverse().map((e) => `
+    tbody.innerHTML = [...cachedAuditEntries].reverse().map((e) => `
       <tr>
-        <td>${esc(formatTs(e.ts))}</td>
-        <td>${esc(e.action)}</td>
-        <td>${esc(e.key || "—")}</td>
+        <td>${esc(e.ts ? new Date(e.ts).toISOString().slice(0, 19).replace("T", " ") : "—")}</td>
+        <td><span class="badge ${e.action === "revoke" || e.action === "disable" ? "badge-disabled" : "badge-ok"}">${esc(e.action)}</span></td>
+        <td><code>${esc(e.key || "—")}</code></td>
         <td>${esc(e.detail || "—")}</td>
-        <td>${esc(e.ip || "—")}</td>
+        <td><code>${esc(e.ip || "—")}</code></td>
       </tr>
     `).join("");
   } catch (err) {
-    document.getElementById("audit-table").innerHTML = `<tr><td colspan="5">Error: ${esc(err.message)}</td></tr>`;
+    const tbody = document.getElementById("audit-table");
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="badge-disabled">Audit load failed: ${esc(err.message)}</td></tr>`;
   }
 }
 
-async function exportAuditLog(format = "json") {
+function exportAuditLog(format) {
   try {
-    const data = await proxy("keys", { action: "audit", limit: 200 });
-    const entries = data.entries || [];
-    if (entries.length === 0) return showToast("No log entries available to export");
-
+    if (!cachedAuditEntries || cachedAuditEntries.length === 0) {
+      showToast("No audit records available to export");
+      return;
+    }
+    const entries = cachedAuditEntries;
     let content = "";
     let mimeType = "application/json";
     const timestamp = new Date().toISOString().slice(0, 10);
@@ -381,17 +429,18 @@ async function exportAuditLog(format = "json") {
   }
 }
 
-// ── Init & Unload Security (No Persistent Whiteflagging) ──────────────────
+// ── Init & Security Cleanup ──────────────────────────────────────────────
 window.addEventListener("beforeunload", () => {
   sessionToken = null;
 });
 
 (async function init() {
-  // Always require fresh active session token validation on load / reload
   sessionToken = null;
-  const isAuth = await checkSession();
-  if (isAuth && sessionToken) {
-    showDashboard();
+  const result = await checkSession();
+  if (result.status === "authorized") {
+    showDashboard(result.email);
+  } else if (result.status === "denied") {
+    showAccessDenied(result.email, result.reason);
   } else {
     showAuth();
   }
