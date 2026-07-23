@@ -8,6 +8,12 @@
     "sourceMap": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "composite": true
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@sourcedhq/core": ["packages/core/src/index.ts"],
+      "@sourcedhq/log": ["packages/log/src/index.ts"],
+      "@sourcedhq/conformance": ["packages/conformance/src/index.ts"]
+    }
   }
 }

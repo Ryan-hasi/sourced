@@ -320,7 +320,7 @@ export const CASES = [
             // 48 h later (past the 36 h TTL) an unrelated claim triggers a fold.
             await assess([claim("b", "Astronomers discover unusual binary star system nearby", "outlet-b")], { now: T0 + 48 * 3_600_000, store, archive: (evs) => void retired.push(...evs) });
             const snapshot = store.snapshot();
-            const stillThere = Object.values(snapshot).some((e) => e.title.includes("tramline"));
+            const stillThere = Object.values(snapshot).some((e) => e?.title?.includes("tramline"));
             if (stillThere)
                 return fail(this.id, this.guarantee, "expired event still in working set");
             return retired.length === 1
