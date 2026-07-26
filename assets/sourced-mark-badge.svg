@@ -2,12 +2,12 @@
   <!-- Outer Pill Container with Subtle Slate Border -->
   <rect x="1" y="1" width="188" height="50" rx="10" fill="#16171a" stroke="#323640" stroke-width="1.5" />
 
-  <!-- Symmetrical Group (Left Margin = 22px, Right Margin = 22px) -->
+  <!-- Symmetrical Group -->
   <g>
     <!-- Red Vector Checkmark -->
     <path d="M 22 26 L 30 34 L 46 18" fill="none" stroke="#ff4d4d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
 
-    <!-- SOURCED Crisp Bold Typography -->
-    <text x="62" y="27" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="700" font-size="18" letter-spacing="4" dominant-baseline="central">SOURCED</text>
+    <!-- SOURCED Crisp Bold Typography (Optically Dead-Centered) -->
+    <text x="62" y="32" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="700" font-size="18" letter-spacing="4">SOURCED</text>
   </g>
 </svg>
