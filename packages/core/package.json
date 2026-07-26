@@ -1,5 +1,5 @@
 {
-  "name": "@sourcedhq/core",
+  "name": "@ryan-hasi/core",
   "version": "1.1.0",
   "description": "The corroboration primitive: how many independent sources corroborate a claim, since when, with receipts. Never 'true' — always 'sourced'.",
   "type": "module",
@@ -31,6 +31,9 @@
   "homepage": "https://sourced.ink",
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "repository": {
     "type": "git",

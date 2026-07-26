@@ -1,0 +1,23 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      # The engine must pass its own yardstick — this job IS the honesty claim.
+      - run: node examples/outage/run.mjs
+      - run: node examples/moderation/run.mjs
+      - run: node examples/osint/run.mjs

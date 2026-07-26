@@ -1,45 +1,19 @@
 {
-  "name": "@sourcedhq/mcp",
+  "name": "@ryan-hasi/mcp",
   "version": "1.0.0",
-  "description": "Sourced as an MCP server for AI agents: corroboration verdicts (assess), transparency-chain verification (verify_chain), and the G1–G7 honesty suite (run_conformance).",
+  "description": "Sourced as an MCP server for AI agents.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "LICENSE.md",
-    "README.md"
-  ],
-  "bin": {
-    "sourced-mcp": "dist/server.js"
-  },
-  "scripts": {
-    "build": "tsc -p ."
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "dependencies": {
-    "@sourcedhq/core": "^1.0.0",
-    "@sourcedhq/log": "^1.0.0",
-    "@sourcedhq/conformance": "^1.0.0"
+    "@ryan-hasi/core": "^1.1.0",
+    "@ryan-hasi/log": "^1.0.0",
+    "@ryan-hasi/conformance": "^1.1.0"
   },
-  "keywords": [
-    "mcp",
-    "model-context-protocol",
-    "corroboration",
-    "verification",
-    "grounding",
-    "sources"
-  ],
   "license": "MIT",
-  "homepage": "https://sourced.ink",
-  "engines": {
-    "node": ">=18"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Ryan-hasi/sourced.git",

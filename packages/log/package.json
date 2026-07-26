@@ -1,32 +1,14 @@
 {
-  "name": "@sourcedhq/log",
+  "name": "@ryan-hasi/log",
   "version": "1.0.0",
-  "description": "Hash-chained transparency log for Sourced verdicts — a tamper-evident, anchorable history of every verdict ever issued.",
+  "description": "Hash-chained transparency log for Sourced verdicts.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "LICENSE.md",
-    "README.md"
-  ],
-  "bin": {
-    "sourced-anchor": "dist/cli.js"
-  },
-  "scripts": {
-    "build": "tsc -p ."
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "license": "MIT",
-  "homepage": "https://sourced.ink",
-  "engines": {
-    "node": ">=18"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Ryan-hasi/sourced.git",
