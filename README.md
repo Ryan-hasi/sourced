@@ -1,4 +1,13 @@
+<div align="center">
+  <a href="https://sourced.network">
+    <img src="https://raw.githubusercontent.com/Ryan-hasi/sourced/main/assets/sourced-mark-badge.svg" width="240" height="60" alt="Sourced Official Badge" />
+  </a>
+</div>
+
+<br />
+
 # Sourced
+
 
 [![ci](https://github.com/Ryan-hasi/sourced/actions/workflows/ci.yml/badge.svg)](https://github.com/Ryan-hasi/sourced/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/%40sourcedhq%2Fcore?label=%40sourcedhq%2Fcore)](https://www.npmjs.com/package/@sourcedhq/core)
