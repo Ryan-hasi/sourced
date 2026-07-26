@@ -1,14 +1,9 @@
-<div align="center">
-  <a href="https://sourced.ink">
-    <img src="https://raw.githubusercontent.com/Ryan-hasi/sourced/main/assets/sourced-logo.svg" width="450" alt="Sourced Protocol" />
-  </a>
-</div>
-
-<br />
+# Sourced
 
 [![ci](https://github.com/Ryan-hasi/sourced/actions/workflows/ci.yml/badge.svg)](https://github.com/Ryan-hasi/sourced/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/%40sourcedhq%2Fcore?label=%40sourcedhq%2Fcore)](https://www.npmjs.com/package/@sourcedhq/core)
 [![✓ SOURCED](https://sourced.network/mark/sourced-mark.svg)](https://sourced.network)
+
 
 > **Corroboration as a primitive.**
 > Given a stream of claims from many origins, Sourced tells you how many
