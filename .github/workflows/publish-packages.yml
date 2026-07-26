@@ -26,13 +26,14 @@ jobs:
           npm install
           npm run build
 
-      - name: Publish Packages
+      - name: Publish Packages to GitHub Packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for pkg in core conformance log anchor archive mcp; do
-            echo "Publishing packages/$pkg..."
-            cd "packages/$pkg"
-            npm publish --access public || true
-            cd ../..
-          done
+          npx --yes json -I -f packages/core/package.json -e 'this.publishConfig={"registry":"https://npm.pkg.github.com"}'
+          npm publish --workspace=packages/core --registry=https://npm.pkg.github.com
+          npm publish --workspace=packages/conformance --registry=https://npm.pkg.github.com
+          npm publish --workspace=packages/log --registry=https://npm.pkg.github.com
+          npm publish --workspace=packages/anchor --registry=https://npm.pkg.github.com
+          npm publish --workspace=packages/archive --registry=https://npm.pkg.github.com
+          npm publish --workspace=packages/mcp --registry=https://npm.pkg.github.com
