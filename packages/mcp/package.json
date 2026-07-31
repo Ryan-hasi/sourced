@@ -1,6 +1,6 @@
 {
   "name": "@ryan-hasi/mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Sourced as an MCP server for AI agents.",
   "type": "module",
   "main": "./dist/index.js",
@@ -8,18 +8,20 @@
   "files": [
     "dist"
   ],
+  "scripts": {
+    "build": "tsc -p ."
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
   "dependencies": {
-    "@ryan-hasi/core": "^1.1.0",
-    "@ryan-hasi/log": "^1.0.0",
-    "@ryan-hasi/conformance": "^1.1.0"
+    "@ryan-hasi/core": "^1.1.1",
+    "@ryan-hasi/log": "^1.0.1",
+    "@ryan-hasi/conformance": "^1.1.1"
   },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Ryan-hasi/sourced.git",
-    "directory": "packages/mcp"
-  }
+  "repository": "https://github.com/Ryan-hasi/sourced"
 }

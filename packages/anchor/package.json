@@ -1,20 +1,28 @@
 {
   "name": "@ryan-hasi/anchor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "OpenTimestamps Calendar Anchoring Adapter for Sourced.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "sourced-anchor-ts": "./dist/cli.js"
+  },
   "files": [
     "dist"
   ],
+  "scripts": {
+    "build": "tsc -p ."
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Ryan-hasi/sourced.git",
-    "directory": "packages/anchor"
-  }
+  "dependencies": {
+    "@ryan-hasi/log": "^1.0.1"
+  },
+  "repository": "https://github.com/Ryan-hasi/sourced"
 }

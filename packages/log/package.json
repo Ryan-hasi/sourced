@@ -1,20 +1,25 @@
 {
   "name": "@ryan-hasi/log",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Hash-chained transparency log for Sourced verdicts.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "sourced-anchor": "./dist/cli.js"
+  },
   "files": [
     "dist"
   ],
+  "scripts": {
+    "build": "tsc -p ."
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Ryan-hasi/sourced.git",
-    "directory": "packages/log"
-  }
+  "repository": "https://github.com/Ryan-hasi/sourced"
 }
