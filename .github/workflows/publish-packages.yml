@@ -29,11 +29,31 @@ jobs:
       - name: Publish Packages to GitHub Packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY: https://npm.pkg.github.com
         run: |
-          npx --yes json -I -f packages/core/package.json -e 'this.publishConfig={"registry":"https://npm.pkg.github.com"}'
-          npm publish --workspace=packages/core --registry=https://npm.pkg.github.com
-          npm publish --workspace=packages/conformance --registry=https://npm.pkg.github.com
-          npm publish --workspace=packages/log --registry=https://npm.pkg.github.com
-          npm publish --workspace=packages/anchor --registry=https://npm.pkg.github.com
-          npm publish --workspace=packages/archive --registry=https://npm.pkg.github.com
-          npm publish --workspace=packages/mcp --registry=https://npm.pkg.github.com
+          failed=0
+          # Dependencies first, so a fresh registry resolves in order.
+          for pkg in core log archive anchor conformance mcp; do
+            dir="packages/$pkg"
+            name=$(node -p "require('./$dir/package.json').name")
+            version=$(node -p "require('./$dir/package.json').version")
+
+            # A version can only be published once — re-pushing main must not fail the job.
+            if npm view "$name@$version" version --registry="$REGISTRY" >/dev/null 2>&1; then
+              echo "::notice::$name@$version already published — skipping"
+              continue
+            fi
+
+            echo "--- publishing $name@$version ---"
+            if out=$(npm publish --workspace="$dir" --registry="$REGISTRY" 2>&1); then
+              echo "$out"
+              echo "::notice::published $name@$version"
+            else
+              echo "$out"
+              # Surface the npm error as an annotation so failures are readable without log access.
+              summary=$(printf '%s' "$out" | grep -Ei 'npm (error|ERR!)' | head -5 | tr '\n' ';')
+              echo "::error::$name@$version failed: ${summary:-see step log}"
+              failed=1
+            fi
+          done
+          exit $failed
