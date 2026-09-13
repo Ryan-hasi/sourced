@@ -28,9 +28,12 @@ jobs:
           cache: npm
           registry-url: 'https://registry.npmjs.org'
 
+      # Trusted publishing (OIDC, no long-lived token) needs npm >= 11.5.1; node 22 ships 10.x.
+      - run: npm install -g npm@latest
+
       - name: Install, build, test
         # `npm install`, not `npm ci`: the lockfile is written by npm >= 11 locally and
-        # npm 10 (node 22) rejects it as out of sync over optional peer deps — same as ci.yml.
+        # older npm rejects it as out of sync over optional peer deps — same as ci.yml.
         run: |
           npm install --no-audit --no-fund
           npm run build
@@ -41,9 +44,15 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           REGISTRY: https://registry.npmjs.org
         run: |
+          # Auth, in order of preference:
+          #   1. Trusted publishing — each package on npmjs.com lists this repo + workflow file
+          #      as its GitHub Actions publisher; npm exchanges the job's OIDC token itself.
+          #   2. NPM_TOKEN secret — only for bootstrapping a package that does not exist on
+          #      npm yet (trusted publishers can be configured only on existing packages).
           if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "::warning::NPM_TOKEN secret is not set — nothing published. Add a granular npm access token (publish scope on @sourcedhq) under Settings → Secrets → Actions, then re-run this workflow."
-            exit 0
+            echo "::notice::No NPM_TOKEN — publishing via OIDC trusted publishing."
+          else
+            echo "::notice::NPM_TOKEN present — publishing with token auth."
           fi
 
           failed=0
