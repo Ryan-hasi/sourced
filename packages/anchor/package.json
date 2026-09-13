@@ -1,28 +1,48 @@
 {
-  "name": "@ryan-hasi/anchor",
+  "name": "@sourcedhq/anchor",
   "version": "1.0.1",
-  "description": "OpenTimestamps Calendar Anchoring Adapter for Sourced.",
+  "description": "Public timestamp anchoring for Sourced — submits chain heads to OpenTimestamps calendar servers for unfakeable proof of existence.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
-    "sourced-anchor-ts": "./dist/cli.js"
+    "sourced-anchor-ts": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE.md",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p ."
   },
+  "dependencies": {
+    "@sourcedhq/log": "^1.0.1"
+  },
+  "keywords": [
+    "timestamp",
+    "anchoring",
+    "opentimestamps",
+    "blockchain",
+    "sourced"
+  ],
   "license": "MIT",
+  "homepage": "https://sourced.ink",
   "engines": {
     "node": ">=18"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public"
   },
-  "dependencies": {
-    "@ryan-hasi/log": "^1.0.1"
-  },
-  "repository": "https://github.com/Ryan-hasi/sourced"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ryan-hasi/sourced.git",
+    "directory": "packages/anchor"
+  }
 }

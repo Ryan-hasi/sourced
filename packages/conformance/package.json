@@ -1,25 +1,45 @@
 {
-  "name": "@ryan-hasi/conformance",
+  "name": "@sourcedhq/conformance",
   "version": "1.1.1",
-  "description": "The Sourced honesty guarantees (G1–G7) as an executable, adversarial conformance suite.",
+  "description": "The Sourced honesty guarantees (G1–G7) as an executable, adversarial conformance suite — point it at any corroboration engine.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE.md",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p ."
   },
+  "dependencies": {
+    "@sourcedhq/core": "^1.1.1"
+  },
+  "keywords": [
+    "conformance",
+    "test-suite",
+    "corroboration",
+    "honesty",
+    "sourced"
+  ],
   "license": "MIT",
+  "homepage": "https://sourced.ink",
   "engines": {
     "node": ">=18"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public"
   },
-  "dependencies": {
-    "@ryan-hasi/core": "^1.1.1"
-  },
-  "repository": "https://github.com/Ryan-hasi/sourced"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ryan-hasi/sourced.git",
+    "directory": "packages/conformance"
+  }
 }

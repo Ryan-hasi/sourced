@@ -1,38 +1,51 @@
-name: Publish Packages to GitHub Packages
+name: Publish to npm
 
+# Publishes every workspace package whose package.json version is not yet on
+# npm. Idempotent: re-pushing main with unchanged versions is a no-op, so a
+# version bump in a normal commit is the whole release procedure.
 on:
   push:
     branches:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: publish-npm
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      id-token: write # npm provenance — a Sigstore attestation linking each tarball to this commit and workflow
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@ryan-hasi'
+          cache: npm
+          registry-url: 'https://registry.npmjs.org'
 
-      - name: Install & Build
+      - name: Install, build, test
         run: |
-          npm install
+          npm ci
           npm run build
+          npm test
 
-      - name: Publish Packages to GitHub Packages
+      - name: Publish new versions
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REGISTRY: https://npm.pkg.github.com
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          REGISTRY: https://registry.npmjs.org
         run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::warning::NPM_TOKEN secret is not set — nothing published. Add a granular npm access token (publish scope on @sourcedhq) under Settings → Secrets → Actions, then re-run this workflow."
+            exit 0
+          fi
+
           failed=0
-          # Dependencies first, so a fresh registry resolves in order.
+          # Dependencies first, so a fresh install of a dependent resolves in order.
           for pkg in core log archive anchor conformance mcp; do
             dir="packages/$pkg"
             name=$(node -p "require('./$dir/package.json').name")
@@ -40,12 +53,12 @@ jobs:
 
             # A version can only be published once — re-pushing main must not fail the job.
             if npm view "$name@$version" version --registry="$REGISTRY" >/dev/null 2>&1; then
-              echo "::notice::$name@$version already published — skipping"
+              echo "::notice::$name@$version already on npm — skipping"
               continue
             fi
 
             echo "--- publishing $name@$version ---"
-            if out=$(npm publish --workspace="$dir" --registry="$REGISTRY" 2>&1); then
+            if out=$(npm publish --workspace="$dir" --access public --provenance --registry="$REGISTRY" 2>&1); then
               echo "$out"
               echo "::notice::published $name@$version"
             else

@@ -88,6 +88,9 @@ marketing line and becomes something you can check.
 | `@sourcedhq/core` | The primitive: `assess(claims, { clusters, store, archive, now, config })` → verdicts. Zero deps. |
 | `@sourcedhq/conformance` | G1–G7 as adversarial executable cases + runner. The yardstick. |
 | `@sourcedhq/log` | Hash-chained, anchorable transparency log for verdict history. |
+| `@sourcedhq/archive` | Persistent event archive — retired events kept forever so corroboration timelines compound. |
+| `@sourcedhq/anchor` | Submits chain heads to OpenTimestamps calendars for public proof of existence. |
+| `@sourcedhq/mcp` | The same three capabilities (`assess`, `verify_chain`, `run_conformance`) as an MCP server for agents. |
 
 ```bash
 npm install        # workspace setup
