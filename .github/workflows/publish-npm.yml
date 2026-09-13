@@ -29,8 +29,10 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install, build, test
+        # `npm install`, not `npm ci`: the lockfile is written by npm >= 11 locally and
+        # npm 10 (node 22) rejects it as out of sync over optional peer deps — same as ci.yml.
         run: |
-          npm ci
+          npm install --no-audit --no-fund
           npm run build
           npm test
 
