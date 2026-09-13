@@ -2,8 +2,9 @@
  * @sourcedhq/mcp — Sourced as an MCP server.
  *
  * Exposes the corroboration primitive to AI agents (Claude, Cursor, any MCP
- * client) as tools: `assess`, `verify_chain`, `run_conformance`. The server
- * self-identifies as "sourced".
+ * client) as tools: `assess`, `verify_chain`, `run_conformance` and
+ * `assess_agent_consensus` (the same counting applied to LLM outputs, with
+ * the model as origin). The server self-identifies as "sourced".
  *
  * Session memory: the server keeps an in-process event store, so
  * corroboration and first-seen accumulate ACROSS calls within one agent
@@ -16,8 +17,10 @@
 import { assess, createMemoryStore, DEFAULT_CONFIG, type Claim, type Verdict } from "@sourcedhq/core";
 import { verify, type LogRecord } from "@sourcedhq/log";
 import { CASES } from "@sourcedhq/conformance";
+import { createRequire } from "node:module";
 
-const VERSION = "1.0.0";
+// Reported as serverInfo.version — read from the manifest so it cannot drift from the published version.
+const VERSION: string = createRequire(import.meta.url)("../package.json").version;
 const FALLBACK_PROTOCOL = "2025-06-18";
 
 // Session event store — corroboration accumulates across calls (see above).
@@ -102,10 +105,12 @@ const TOOLS = [
   {
     name: "assess_agent_consensus",
     description:
-      "Evaluates AI Multi-Agent outputs for consensus and hallucination elimination. " +
-      "Takes generated outputs from multiple LLM agents (e.g. Gemini, Claude, DeepSeek, Llama), " +
-      "measures independent model corroboration using Sourced dual-gate matching, and returns consensus verdicts. " +
-      "High corroboration (>= 2 distinct model origins) indicates zero-hallucination confidence for auto-execution.",
+      "Counts how many DISTINCT models independently produced the same claim. Takes outputs from several LLM " +
+      "agents (e.g. Gemini, Claude, DeepSeek, Llama); the model is the origin, so repeat outputs from one model " +
+      "collapse to one (G3). Returns per output the corroboration count and which models corroborated it. " +
+      "Agreement between models is evidence of agreement, not of correctness — shared training data produces " +
+      "shared mistakes. Sourced never says 'true' (G2); single-model outputs stay bare (G5). Use the count as " +
+      "one input to your own decision, not as an execution gate.",
     inputSchema: {
       type: "object",
       properties: {
@@ -196,10 +201,10 @@ async function callTool(name: string, args: Json): Promise<Json> {
         model: claims[idx].origin,
         corroboration: v?.corroboration ?? 1,
         corroboratingModels: v?.corroboratingSources ?? [],
-        confidence: (v?.corroboration ?? 1) >= 2 ? "HIGH_CONFIDENCE_AUTO_EXECUTE" : "SINGLE_AGENT_BARE_REVIEW",
+        agreement: (v?.corroboration ?? 1) >= 2 ? "corroborated" : "single-model",
         signal: v?.signal ?? null,
       })),
-      guaranteeNote: "G3 Independence enforced: multiple calls from the exact same model collapse to 1 origin.",
+      honest: "corroborated by N models, never 'true' — repeat outputs from one model collapse to one origin (G3); single-model outputs carry no label (G5).",
     });
   }
 

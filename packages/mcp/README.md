@@ -3,7 +3,9 @@
 **Sourced as an MCP server** — the corroboration primitive as native tools for
 AI agents. Server name: `sourced`. Tools: `assess` (session memory —
 corroboration and first-seen accumulate across calls), `verify_chain`,
-`run_conformance`.
+`run_conformance`, and `assess_agent_consensus` — the same counting applied
+to outputs from several LLMs, with the model as origin: it tells you how many
+distinct models agree and which ones, never whether they are right.
 
 ```bash
 # Claude Code

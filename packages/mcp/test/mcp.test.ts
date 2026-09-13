@@ -88,6 +88,8 @@ describe("@sourcedhq/mcp — tools", () => {
     }));
     expect(r.consensusVerdicts).toHaveLength(2);
     expect(r.consensusVerdicts[1].corroboration).toBe(2);
-    expect(r.consensusVerdicts[1].confidence).toBe("HIGH_CONFIDENCE_AUTO_EXECUTE");
+    expect(r.consensusVerdicts[1].agreement).toBe("corroborated");
+    expect(r.consensusVerdicts[1].corroboratingModels).toEqual(["gemini-1.5-pro"]);
+    expect(r.consensusVerdicts[0].agreement).toBe("single-model");
   });
 });
