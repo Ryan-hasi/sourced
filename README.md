@@ -94,7 +94,7 @@ marketing line and becomes something you can check.
 
 ```bash
 npm install        # workspace setup
-npm test           # 20 adversarial + unit tests
+npm test           # 94 tests: 14 adversarial conformance cases + unit
 ```
 
 ## Beyond news
